@@ -6,15 +6,15 @@
 
 | 字段 | 值 |
 |---|---|
-| Active phase | `NONE`（P03 已完成，等待用户在新执行中启动 P04） |
-| Phase status | `COMPLETED` |
-| Phase lock | `CLOSED`（不得在本次执行中启动 P04） |
-| Allowed scope | 仅记录 P03 完成状态 |
-| Forbidden scope | P04-P07 的核心业务、支付、实时通信、worker、全链路适配、生产部署和切流 |
+| Active phase | `P04`：核心业务 API 迁移 |
+| Phase status | `IN_PROGRESS` |
+| Phase lock | `P04 ONLY`（不得在本次执行中启动 P05） |
+| Allowed scope | 用户、头像、课程、词库、学习、UV/PV/event/performance/error 埋点及其契约/测试/文档 |
+| Forbidden scope | P05-P07 的支付、Socket.IO、worker、全链路适配、生产部署和切流 |
 | Required skill | `en-learning-backend-refactor` |
 | Skill status | `LOADED` |
-| Skill loaded at | 2026-08-21（P03 新执行重新加载） |
-| Next phase | `P04`，仅由用户在新的执行中明确启动并重新通过 skill 门禁 |
+| Skill loaded at | 2026-08-21（P04 当前执行重新加载） |
+| Next phase | `P05`，仅在 P04 完成并由用户在新的执行中明确启动后允许 |
 
 ## 阶段状态
 
@@ -24,10 +24,37 @@
 | P01 工程骨架与数据库基础 | `COMPLETED` | `bb0a24b` | 主提交已推送到 `origin/codex/p01-fastapi-foundation` |
 | P02 数据初始化 | `COMPLETED` | `8c5bf25` | 主提交已推送到 `origin/codex/p02-data-bootstrap` |
 | P03 AI 服务 | `COMPLETED` | `fc0e503` | 主提交已推送到 `origin/codex/p03-ai-service` |
-| P04 核心业务 API | `NOT_STARTED` | — | — |
+| P04 核心业务 API | `IN_PROGRESS` | — | 当前唯一执行阶段 |
 | P05 支付/Socket.IO/worker | `NOT_STARTED` | — | — |
 | P06 前端与全链路验收 | `NOT_STARTED` | — | — |
 | P07 灰度上线与清理 | `NOT_STARTED` | — | — |
+
+## P04 启动基线
+
+| 检查 | 证据 | 状态 |
+|---|---|---|
+| 用户授权 | 用户在 2026-08-21 新执行中明确要求继续下一阶段 | PASS |
+| 必需 skill | 本次从仓库完整读取 `en-learning-backend-refactor` | PASS |
+| 仓库标识 | 根目录与四项标识全部存在 | PASS |
+| P03 前置条件 | `fc0e503` 主提交与 `eb407cb` 完成记录已推送 | PASS |
+| 启动分支 | 从已完成 P03 创建 `codex/p04-core-api` | PASS |
+| 启动工作区 | 仅 `.agents/`、`.codex/` 为既有未跟踪内容，继续保护且不提交 | PASS |
+| 技术映射 | 已完整读取 `framework-parity.md`，锁定 Depends/session、JWT、multipart、事务和异步 MinIO 边界 | PASS |
+| 视觉门禁 | N/A（纯后端）；以路径、schema、状态码、错误 envelope、OpenAPI 和前端核心流程验收 | N/A |
+
+## P04 验收清单
+
+| 标准 | 验证方法 | 当前证据 | 状态 |
+|---|---|---|---|
+| 本次只执行 P04 | 阶段锁、OpenAPI/模块与最终 diff 范围检查 | 已锁定 P04；禁止支付、Socket.IO、worker、部署和切流 | IN PROGRESS |
+| 全部既有 Core 非支付路由契约 | NestJS/前端清单、HTTP/OpenAPI 与自动化夹具 | 待盘点并实现 | PENDING |
+| envelope、状态码及序列化兼容 | 成功/错误、date/Decimal/null 契约测试 | 待实现 | PENDING |
+| 密码与 JWT 安全 | 哈希、access/refresh、过期/伪造/越权测试 | 待实现 | PENDING |
+| 头像上传安全 | 认证、内容/MIME/大小/对象覆盖/失败清理测试 | 待实现 | PENDING |
+| WordBook 查询正确 | 过滤、分页、ECDICT 标签与稳定 `frq` 排序测试 | 待实现 | PENDING |
+| 学习事务与并发正确 | 购买权、重复/并发掌握、wordNumber 测试 | 待实现 | PENDING |
+| 埋点边界与隐私 | schema、超大载荷、速率、依赖错误、日志秘密测试 | 待实现 | PENDING |
+| 未实现 P05+ | 范围扫描和最终 diff 审查 | 待最终验证 | PENDING |
 
 ## P03 启动基线
 

@@ -27,6 +27,12 @@ class AIResources(Protocol):
     llm_http: httpx.AsyncClient
 
 
+class CoreResources(Protocol):
+    database: Database
+    redis: Redis
+    object_storage: ObjectStorage
+
+
 class ResourceSet:
     """Process-level clients, created in lifespan and closed in reverse order."""
 

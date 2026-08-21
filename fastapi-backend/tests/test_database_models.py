@@ -35,6 +35,7 @@ EXPECTED_COLUMNS = {
         "wordNumber",
         "dayNumber",
         "lastLoginAt",
+        "refreshTokenVersion",
         "createdAt",
         "updatedAt",
     },

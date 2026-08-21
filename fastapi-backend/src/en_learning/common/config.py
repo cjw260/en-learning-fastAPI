@@ -43,6 +43,18 @@ class Settings(BaseSettings):
     redis_url: RedisDsn = Field(validation_alias="REDIS_URL")
 
     jwt_secret: SecretStr = Field(validation_alias="SECRET_KEY")
+    jwt_access_ttl_seconds: int = Field(
+        default=300,
+        validation_alias="JWT_ACCESS_TTL_SECONDS",
+        ge=60,
+        le=86_400,
+    )
+    jwt_refresh_ttl_seconds: int = Field(
+        default=604_800,
+        validation_alias="JWT_REFRESH_TTL_SECONDS",
+        ge=300,
+        le=2_592_000,
+    )
 
     minio_endpoint: str = Field(validation_alias="MINIO_ENDPOINT", min_length=1)
     minio_port: int = Field(default=9000, validation_alias="MINIO_PORT", ge=1, le=65535)
@@ -50,6 +62,31 @@ class Settings(BaseSettings):
     minio_access_key: SecretStr = Field(validation_alias="MINIO_ACCESS_KEY")
     minio_secret_key: SecretStr = Field(validation_alias="MINIO_SECRET_KEY")
     minio_bucket: str = Field(validation_alias="MINIO_BUCKET", min_length=1)
+    avatar_max_bytes: int = Field(
+        default=5 * 1024 * 1024,
+        validation_alias="AVATAR_MAX_BYTES",
+        ge=1024,
+        le=10 * 1024 * 1024,
+    )
+
+    tracker_max_body_bytes: int = Field(
+        default=64 * 1024,
+        validation_alias="TRACKER_MAX_BODY_BYTES",
+        ge=1024,
+        le=1024 * 1024,
+    )
+    tracker_rate_limit: int = Field(
+        default=120,
+        validation_alias="TRACKER_RATE_LIMIT",
+        ge=1,
+        le=10_000,
+    )
+    tracker_rate_window_seconds: int = Field(
+        default=60,
+        validation_alias="TRACKER_RATE_WINDOW_SECONDS",
+        ge=1,
+        le=3600,
+    )
 
     deepseek_base_url: AnyHttpUrl = Field(
         default=AnyHttpUrl("https://api.deepseek.com"),

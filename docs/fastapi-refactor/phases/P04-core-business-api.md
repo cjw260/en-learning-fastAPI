@@ -1,6 +1,6 @@
 # P04：核心业务 API 迁移
 
-状态：`NOT_STARTED`
+状态：`IN_PROGRESS`
 
 ## 启动条件
 

@@ -194,6 +194,27 @@ def test_openapi_contains_only_approved_service_boundaries(settings: Settings) -
         expected = {root_path, "/health/live", "/health/ready"}
         if service is ServiceKind.AI:
             expected.update({"/ai/v1/prompt/list", "/ai/v1/chat", "/ai/v1/chat/history"})
+        else:
+            expected.update(
+                {
+                    "/api/v1/user/login",
+                    "/api/v1/user/register",
+                    "/api/v1/user/refresh-token",
+                    "/api/v1/user/upload-avatar",
+                    "/api/v1/user/update-user",
+                    "/api/v1/course/list",
+                    "/api/v1/course/my",
+                    "/api/v1/word-book",
+                    "/api/v1/learn/word/{id}",
+                    "/api/v1/learn/word/master",
+                    "/api/v1/tracker/uv",
+                    "/api/v1/tracker/update-uv",
+                    "/api/v1/tracker/performance",
+                    "/api/v1/tracker/pv",
+                    "/api/v1/tracker/event",
+                    "/api/v1/tracker/error",
+                }
+            )
         assert set(app.openapi()["paths"]) == expected
 
 

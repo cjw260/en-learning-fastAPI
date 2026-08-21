@@ -100,6 +100,12 @@ class User(TimestampMixin, Base):
         server_default=text("0"),
     )
     last_login_at: Mapped[datetime | None] = mapped_column("lastLoginAt", timestamp_type)
+    refresh_token_version: Mapped[int] = mapped_column(
+        "refreshTokenVersion",
+        Integer,
+        default=0,
+        server_default=text("0"),
+    )
 
     word_book_records: Mapped[list[WordBookRecord]] = relationship(
         back_populates="user",

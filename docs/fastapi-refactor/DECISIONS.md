@@ -125,3 +125,11 @@
 - 兼容性：旧前端仍发送 body/query `userId`，P03 暂时保留该字段，但必须与 JWT 用户一致；不一致返回 403，字段本身不参与身份确定。前端 Axios 和 SSE 请求补充 Bearer header。
 - 历史：新建 `AIChatThread`/`AIChatMessage`，以 user+role 唯一隔离并保留消息顺序、reasoning 和重启恢复能力；按 D008 不读取或转换旧 LangGraph checkpoint，首次访问空数组是预期结果。
 - 并发：同一 user+role 在 Redis 中使用带随机 token 和原子 compare-delete 的短租约串行生成；Redis 不可用时拒绝开始聊天，避免无保护的并发写入。
+
+## D019：P04 密码、refresh 轮换与业务错误语义
+
+- 状态：已批准，2026-08-21。
+- 密码：新注册值使用 versioned scrypt（独立随机盐）存储；兼容旧库时，仅在首次成功登录中常量时间校验旧值并立即升级。密码和内部 refresh 版本永不出现在 API 响应或日志。
+- refresh：`User.refreshTokenVersion` 从 0 开始；登录和每次 refresh 在行锁事务中递增，token 携带版本。旧 NestJS token 未携带版本时解释为 0，因此同一用户的旧 refresh 链只能有一次迁移机会；并发重放只有一个成功。
+- 错误：旧 `ResponseService.error()` 被 interceptor 包成 HTTP 200/`success:true` 是缺陷，不作为兼容目标。P04 依计划改用 401/403/404/409/413/422/429/503 failure envelope，P06 负责调用方错误展示适配。
+- 身份：头像、学习和用户更新只接受 JWT 当前用户；tracker 用户绑定也必须认证且 body `userId` 与 JWT 一致。
