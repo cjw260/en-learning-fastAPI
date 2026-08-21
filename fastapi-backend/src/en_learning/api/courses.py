@@ -43,7 +43,7 @@ async def my_courses(
         .join(PaymentRecord, PaymentRecord.id == CourseRecord.payment_record_id)
         .where(
             CourseRecord.user_id == user.id,
-            PaymentRecord.trade_status == TradeStatus.TRADE_SUCCESS,
+            PaymentRecord.trade_status.in_([TradeStatus.TRADE_SUCCESS, TradeStatus.TRADE_FINISHED]),
         )
         .order_by(CourseRecord.created_at)
     )

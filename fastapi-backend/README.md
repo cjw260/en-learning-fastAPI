@@ -1,8 +1,10 @@
 # en-learning FastAPI backend
 
 P01 establishes the process and database foundation. P02 adds deterministic,
-auditable development-data initialization. P03 migrates only the authenticated AI API;
-Core business routes, payment, Socket.IO, and production rollout remain out of scope.
+auditable development-data initialization. P03 migrates the authenticated AI API, P04
+migrates the non-payment Core API, and P05 adds trusted payment processing, authenticated
+Socket.IO delivery, and durable background jobs. P06 end-to-end frontend adaptation and P07
+production rollout remain out of scope.
 
 ## Local setup
 
@@ -71,6 +73,34 @@ concurrent writes to the same user/role conversation.
 The prepared, unapplied AI-only canary and rollback procedure is documented in
 `../docs/fastapi-refactor/runbooks/P03-ai-canary.md`. It must not be applied without separate
 production authorization.
+
+## P05 payment, realtime, and durable jobs
+
+Payment creation remains compatible with the legacy Vue payload at `POST /api/v1/pay/create`,
+but course title and amount always come from PostgreSQL. Alipay notifications are accepted at
+`POST /api/v1/pay/notify`; the handler verifies RSA2 signatures and merchant/order facts before
+updating payment and entitlement state in one transaction. Authenticated clients can recover
+the final state through `GET /api/v1/pay/status/{outTradeNo}`.
+
+The Core ASGI app also serves Socket.IO on `/socket.io`. Clients must supply their Bearer access
+token in the Socket.IO `auth.token` field; a legacy `userId` query is accepted only when it
+matches the signed identity. `paymentSuccess` remains the event name and the payload remains the
+user ID string. Redis carries room events across Uvicorn processes.
+
+Payment notifications and daily email summaries are stored as unique `BackgroundJob` rows
+before delivery. Run both the worker and scheduler entries shown above. The scheduler creates
+daily jobs and requeues due or lease-expired jobs every minute; delivery uses bounded timeouts,
+retry backoff, row locks, and stable message IDs. Operators can explicitly replay recoverable or
+exhausted jobs without changing payment facts:
+
+```bash
+uv run en-learning-worker-replay
+uv run en-learning-worker-replay --include-failed --limit 100
+```
+
+Configure Alipay, Socket.IO origins/channel, SMTP, digest timezone, and worker bounds from
+`.env.example`. Never run both NestJS and FastAPI payment consumers against the same callback
+during rollback or canary operations.
 
 ## Quality gates
 

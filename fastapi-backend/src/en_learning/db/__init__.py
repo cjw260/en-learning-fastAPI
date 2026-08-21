@@ -2,6 +2,7 @@
 
 from en_learning.db.base import Base
 from en_learning.db.models import (
+    BackgroundJob,
     Course,
     CourseRecord,
     ErrorEntry,
@@ -17,6 +18,7 @@ from en_learning.db.models import (
 )
 
 __all__ = [
+    "BackgroundJob",
     "Base",
     "Course",
     "CourseRecord",

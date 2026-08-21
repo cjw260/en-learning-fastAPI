@@ -22,6 +22,7 @@ APPLICATION_TABLES = {
     "ErrorEntry",
     "AIChatThread",
     "AIChatMessage",
+    "BackgroundJob",
 }
 
 

@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 
 from en_learning.api.courses import router as course_router
 from en_learning.api.learning import router as learning_router
+from en_learning.api.payments import router as payment_router
 from en_learning.api.tracker import router as tracker_router
 from en_learning.api.users import router as user_router
 from en_learning.api.word_books import router as word_book_router
@@ -21,4 +22,5 @@ router.include_router(user_router)
 router.include_router(course_router)
 router.include_router(word_book_router)
 router.include_router(learning_router)
+router.include_router(payment_router)
 router.include_router(tracker_router)

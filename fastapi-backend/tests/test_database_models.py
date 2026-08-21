@@ -18,6 +18,7 @@ EXPECTED_TABLES = {
     "ErrorEntry",
     "AIChatThread",
     "AIChatMessage",
+    "BackgroundJob",
 }
 
 EXPECTED_COLUMNS = {
@@ -75,6 +76,10 @@ EXPECTED_COLUMNS = {
         "body",
         "tradeStatus",
         "sendPayTime",
+        "courseId",
+        "expiresAt",
+        "appId",
+        "sellerId",
         "createdAt",
         "updatedAt",
     },
@@ -150,6 +155,23 @@ EXPECTED_COLUMNS = {
         "createdAt",
         "updatedAt",
     },
+    "BackgroundJob": {
+        "id",
+        "taskKey",
+        "kind",
+        "status",
+        "userId",
+        "paymentRecordId",
+        "payload",
+        "attempts",
+        "maxAttempts",
+        "scheduledFor",
+        "lockedUntil",
+        "completedAt",
+        "lastErrorCode",
+        "createdAt",
+        "updatedAt",
+    },
 }
 
 EXPECTED_NULLABLE_COLUMNS = {
@@ -176,7 +198,14 @@ EXPECTED_NULLABLE_COLUMNS = {
         "cet4",
         "ky",
     },
-    "PaymentRecord": {"tradeNo", "sendPayTime"},
+    "PaymentRecord": {
+        "tradeNo",
+        "sendPayTime",
+        "courseId",
+        "expiresAt",
+        "appId",
+        "sellerId",
+    },
     "CourseRecord": {"paymentRecordId"},
     "Course": {"description"},
     "Visitor": {"userId", "browser", "os", "device"},
@@ -186,6 +215,7 @@ EXPECTED_NULLABLE_COLUMNS = {
     "ErrorEntry": {"message", "stack", "url"},
     "AIChatThread": set(),
     "AIChatMessage": {"reasoning"},
+    "BackgroundJob": {"paymentRecordId", "lockedUntil", "completedAt", "lastErrorCode"},
 }
 
 
@@ -243,6 +273,12 @@ def test_metadata_preserves_index_names_and_uniqueness() -> None:
         "PaymentRecord": {
             "PaymentRecord_outTradeNo_key": True,
             "PaymentRecord_tradeNo_idx": False,
+            "PaymentRecord_userId_courseId_idx": False,
+        },
+        "BackgroundJob": {
+            "BackgroundJob_taskKey_key": True,
+            "BackgroundJob_status_scheduledFor_idx": False,
+            "BackgroundJob_kind_idx": False,
         },
         "CourseRecord": {"CourseRecord_userId_courseId_key": True},
         "Course": {"Course_value_key": True},
@@ -288,7 +324,7 @@ def test_all_foreign_keys_keep_cascade_semantics() -> None:
         for table in Base.metadata.tables.values()
         for foreign_key in table.foreign_key_constraints
     ]
-    assert len(foreign_keys) == 13
+    assert len(foreign_keys) == 16
     actual = {
         (
             foreign_key.name,
@@ -302,6 +338,19 @@ def test_all_foreign_keys_keep_cascade_semantics() -> None:
         ("WordBookRecord_userId_fkey", "WordBookRecord", ("userId",), ("User.id",)),
         ("WordBookRecord_wordId_fkey", "WordBookRecord", ("wordId",), ("WordBook.id",)),
         ("PaymentRecord_userId_fkey", "PaymentRecord", ("userId",), ("User.id",)),
+        ("PaymentRecord_courseId_fkey", "PaymentRecord", ("courseId",), ("Course.id",)),
+        (
+            "BackgroundJob_userId_fkey",
+            "BackgroundJob",
+            ("userId",),
+            ("User.id",),
+        ),
+        (
+            "BackgroundJob_paymentRecordId_fkey",
+            "BackgroundJob",
+            ("paymentRecordId",),
+            ("PaymentRecord.id",),
+        ),
         (
             "CourseRecord_paymentRecordId_fkey",
             "CourseRecord",
@@ -329,7 +378,10 @@ def test_all_foreign_keys_keep_cascade_semantics() -> None:
         ),
     }
     for foreign_key in foreign_keys:
-        assert foreign_key.ondelete == "CASCADE"
+        expected_delete = (
+            "RESTRICT" if foreign_key.name == "PaymentRecord_courseId_fkey" else "CASCADE"
+        )
+        assert foreign_key.ondelete == expected_delete
         assert foreign_key.onupdate == "CASCADE"
 
 

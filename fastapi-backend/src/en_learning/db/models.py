@@ -279,6 +279,7 @@ class PaymentRecord(TimestampMixin, Base):
         PrimaryKeyConstraint("id", name="PaymentRecord_pkey"),
         Index("PaymentRecord_outTradeNo_key", "outTradeNo", unique=True),
         Index("PaymentRecord_tradeNo_idx", "tradeNo"),
+        Index("PaymentRecord_userId_courseId_idx", "userId", "courseId"),
     )
 
     id: Mapped[str] = mapped_column(Text)
@@ -289,6 +290,16 @@ class PaymentRecord(TimestampMixin, Base):
             "User.id",
             name="PaymentRecord_userId_fkey",
             ondelete="CASCADE",
+            onupdate="CASCADE",
+        ),
+    )
+    course_id: Mapped[str | None] = mapped_column(
+        "courseId",
+        Text,
+        ForeignKey(
+            "Course.id",
+            name="PaymentRecord_courseId_fkey",
+            ondelete="RESTRICT",
             onupdate="CASCADE",
         ),
     )
@@ -304,6 +315,9 @@ class PaymentRecord(TimestampMixin, Base):
         server_default=text("'NOT_PAY'"),
     )
     send_pay_time: Mapped[datetime | None] = mapped_column("sendPayTime", timestamp_type)
+    expires_at: Mapped[datetime | None] = mapped_column("expiresAt", timestamp_type)
+    app_id: Mapped[str | None] = mapped_column("appId", Text)
+    seller_id: Mapped[str | None] = mapped_column("sellerId", Text)
 
     user: Mapped[User] = relationship(back_populates="payment_records")
     course_records: Mapped[list[CourseRecord]] = relationship(
@@ -311,6 +325,71 @@ class PaymentRecord(TimestampMixin, Base):
         cascade="all",
         passive_deletes=True,
     )
+
+
+class BackgroundJob(TimestampMixin, Base):
+    __tablename__ = "BackgroundJob"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name="BackgroundJob_pkey"),
+        Index("BackgroundJob_taskKey_key", "taskKey", unique=True),
+        Index("BackgroundJob_status_scheduledFor_idx", "status", "scheduledFor"),
+        Index("BackgroundJob_kind_idx", "kind"),
+        CheckConstraint(
+            "kind IN ('PAYMENT_SUCCESS', 'EMAIL_DIGEST')",
+            name="BackgroundJob_kind_values",
+        ),
+        CheckConstraint(
+            "status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED')",
+            name="BackgroundJob_status_values",
+        ),
+        CheckConstraint('attempts >= 0 AND "maxAttempts" > 0', name="BackgroundJob_attempts"),
+    )
+
+    id: Mapped[str] = mapped_column(Text)
+    task_key: Mapped[str] = mapped_column("taskKey", Text)
+    kind: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(Text, default="PENDING", server_default=text("'PENDING'"))
+    user_id: Mapped[str] = mapped_column(
+        "userId",
+        Text,
+        ForeignKey(
+            "User.id",
+            name="BackgroundJob_userId_fkey",
+            ondelete="CASCADE",
+            onupdate="CASCADE",
+        ),
+    )
+    payment_record_id: Mapped[str | None] = mapped_column(
+        "paymentRecordId",
+        Text,
+        ForeignKey(
+            "PaymentRecord.id",
+            name="BackgroundJob_paymentRecordId_fkey",
+            ondelete="CASCADE",
+            onupdate="CASCADE",
+        ),
+    )
+    payload: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
+    attempts: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    max_attempts: Mapped[int] = mapped_column(
+        "maxAttempts",
+        Integer,
+        default=4,
+        server_default=text("4"),
+    )
+    scheduled_for: Mapped[datetime] = mapped_column(
+        "scheduledFor",
+        timestamp_type,
+        default=utc_now_naive,
+        server_default=func.now(),
+    )
+    locked_until: Mapped[datetime | None] = mapped_column("lockedUntil", timestamp_type)
+    completed_at: Mapped[datetime | None] = mapped_column("completedAt", timestamp_type)
+    last_error_code: Mapped[str | None] = mapped_column("lastErrorCode", Text)
 
 
 class CourseRecord(TimestampMixin, Base):

@@ -6,15 +6,15 @@
 
 | 字段 | 值 |
 |---|---|
-| Active phase | `NONE`（P04 已完成，等待用户在新执行中启动 P05） |
-| Phase status | `COMPLETED` |
-| Phase lock | `CLOSED`（不得在本次执行中启动 P05） |
-| Allowed scope | 仅记录 P04 完成状态 |
-| Forbidden scope | P05-P07 的支付、Socket.IO、worker、全链路适配、生产部署和切流 |
+| Active phase | `P05`：支付、Socket.IO 与后台任务 |
+| Phase status | `IN_PROGRESS` |
+| Phase lock | `P05 ONLY`（不得在本次执行中启动 P06） |
+| Allowed scope | 支付创建/回调/状态查询、可靠 outbox、Socket.IO JWT/Redis、摘要 worker/调度/补偿、直接相关前端握手与测试文档 |
+| Forbidden scope | P06 全链路前端适配、性能容量定案、P07 生产部署/Nginx/systemd/切流与旧服务处置 |
 | Required skill | `en-learning-backend-refactor` |
 | Skill status | `LOADED` |
-| Skill loaded at | 2026-08-21（P04 当前执行重新加载） |
-| Next phase | `P05`，仅由用户在新的执行中明确启动并重新通过 skill 门禁 |
+| Skill loaded at | 2026-08-21（P05 当前执行重新加载） |
+| Next phase | `P06`，仅在 P05 完成、推送且用户于新执行明确启动后允许 |
 
 ## 阶段状态
 
@@ -25,9 +25,38 @@
 | P02 数据初始化 | `COMPLETED` | `8c5bf25` | 主提交已推送到 `origin/codex/p02-data-bootstrap` |
 | P03 AI 服务 | `COMPLETED` | `fc0e503` | 主提交已推送到 `origin/codex/p03-ai-service` |
 | P04 核心业务 API | `COMPLETED` | `b51f41b` | 主提交已推送到 `origin/codex/p04-core-api` |
-| P05 支付/Socket.IO/worker | `NOT_STARTED` | — | — |
+| P05 支付/Socket.IO/worker | `IN_PROGRESS` | — | 当前执行已授权并通过启动门禁 |
 | P06 前端与全链路验收 | `NOT_STARTED` | — | — |
 | P07 灰度上线与清理 | `NOT_STARTED` | — | — |
+
+## P05 启动基线
+
+| 检查 | 证据 | 状态 |
+|---|---|---|
+| 用户授权 | 用户在 2026-08-21 新执行中明确要求进行下一阶段 | PASS |
+| 必需 skill | 本次从仓库完整读取 `en-learning-backend-refactor` | PASS |
+| 仓库标识 | 根目录与四项标识全部存在 | PASS |
+| P04 前置条件 | `b51f41b` 主提交与 `2da6c4b` 完成记录已推送 | PASS |
+| 启动分支 | 从已完成 P04 创建 `codex/p05-payment-socket-worker` | PASS |
+| 启动工作区 | 仅 `.agents/`、`.codex/` 为既有未跟踪内容，继续保护且不提交 | PASS |
+| 旧系统基线 | 已重读 pay controller/service、Socket gateway、digest queue/processor、邮件服务和 Vue 支付/Socket 调用 | PASS |
+| 技术映射 | 已完整读取 `framework-parity.md`，锁定验签原始字段、事务后副作用、JWT 房间、Redis 多进程和独立 worker 边界 | PASS |
+| 视觉门禁 | N/A（后端高风险集成）；以 HTTP/Socket/worker 协议、双进程、故障注入、前端类型和构建验收 | N/A |
+
+## P05 验收清单
+
+| 标准 | 验证方法 | 当前证据 | 状态 |
+|---|---|---|---|
+| 本次只执行 P05 | 阶段锁、OpenAPI/模块和最终 diff 范围检查 | 仅支付、Socket.IO、worker/调度、握手 token、迁移、测试与文档；无 P06/P07 运行时 | PASS |
+| 服务端可信结算事实 | 伪造金额/标题/用户、订单并发和购买权测试 | 只以 JWT 当前用户与 Course 数据生成订单；待支付/已购冲突受控 | PASS |
+| 支付宝通知安全与幂等 | RSA2、商户、金额、未知订单、重复/乱序/并发测试 | 原始字段验签后校验 app/seller/order/amount/tradeNo；同订单行锁与状态机通过 | PASS |
+| 权益与可靠事件同事务 | PostgreSQL 事务、唯一键和入队失败注入 | PaymentRecord/CourseRecord/BackgroundJob 单事务；入队失败后状态 API 仍显示已购且任务可恢复 | PASS |
+| Socket.IO 身份与多实例 | 两个 Uvicorn、真实 Redis、三用户连接和重连测试 | JWT 决定 `user_{id}`；同用户跨实例/多连接收到 `paymentSuccess`，他人/裸 userId 被拒绝 | PASS |
+| worker 重启与重复投递 | 并发 claim、租约、恢复扫描、人工 replay 测试 | 数据库状态机只完成一次；到期/租约过期任务每分钟恢复；耗尽任务可显式补偿 | PASS |
+| 摘要调度和邮件故障 | Redis NX 锁、日期唯一键、SMTP 故障和重试测试 | 同日同用户只建一项；重启可执行；失败持久化并按稳定 Message-ID 重试 | PASS |
+| 依赖故障不破坏支付事实 | Redis/Socket/SMTP/即时入队故障注入 | 支付与权益先提交；通知失败只影响 durable job，API 查询和 replay 可最终一致 | PASS |
+| 敏感日志与配置 | 结构化日志、SecretStr、测试日志和敏感模式扫描 | 日志仅哈希引用/任务类型/失败类别；不记录签名、订单全文、邮件正文或凭证 | PASS |
+| 自动化与构建 | uv/Ruff/mypy/pytest/Vue type-check/build | uv 锁文件可离线检查；Ruff/mypy 通过；pytest `81 passed`；前端 type-check/build 通过 | PASS |
 
 ## P04 启动基线
 
@@ -188,11 +217,11 @@
 
 ## 当前阻塞
 
-无 P04 阻塞。实现、实际浏览器验收、最终自动化/前端构建、staged diff/敏感信息审查和主提交推送均通过。
+无 P05 阻塞。实现、自动化、双进程 Socket.IO、故障注入、前端构建以及 staged diff/敏感信息/范围审查均通过；主提交与完成记录推送待执行。
 
 ## 准确下一动作
 
-结束本次执行，不启动 P05。用户在新的执行中明确启动 P05 后，必须重新加载 `en-learning-backend-refactor`，读取根 `AGENTS.md`、本文件和 P05 阶段文件，再建立新的阶段锁。
+提交并推送 P05 主实现；随后将权威状态标记为 `COMPLETED`，提交并推送完成记录后结束本次执行，不启动 P06。
 
 ## P04 已完成动作
 

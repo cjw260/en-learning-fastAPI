@@ -2,7 +2,7 @@ import importlib
 import sys
 
 import pytest
-from taskiq import InMemoryBroker, SimpleRetryMiddleware
+from taskiq import InMemoryBroker, SimpleRetryMiddleware, SmartRetryMiddleware
 from taskiq_redis import RedisStreamBroker
 
 from en_learning.common.config import get_settings
@@ -18,7 +18,7 @@ def test_worker_uses_acknowledged_redis_stream_broker(monkeypatch: pytest.Monkey
     assert isinstance(worker.broker, RedisStreamBroker)
     assert worker.broker.queue_name == "en-learning"
     assert worker.broker.consumer_group_name == "en-learning-workers"
-    assert any(isinstance(item, SimpleRetryMiddleware) for item in worker.broker.middlewares)
+    assert any(isinstance(item, SmartRetryMiddleware) for item in worker.broker.middlewares)
     assert len(worker.scheduler.sources) == 2
 
 

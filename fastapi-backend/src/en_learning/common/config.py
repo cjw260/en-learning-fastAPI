@@ -1,5 +1,6 @@
 from functools import lru_cache
 from typing import Literal, Self
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import AnyHttpUrl, Field, RedisDsn, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -86,6 +87,68 @@ class Settings(BaseSettings):
         validation_alias="TRACKER_RATE_WINDOW_SECONDS",
         ge=1,
         le=3600,
+    )
+
+    alipay_app_id: str = Field(validation_alias="ALIPAY_APP_ID", min_length=1)
+    alipay_seller_id: str = Field(validation_alias="ALIPAY_SELLER_ID", min_length=1)
+    alipay_private_key: SecretStr = Field(validation_alias="ALIPAY_PRIVATE_KEY")
+    alipay_public_key: SecretStr = Field(validation_alias="ALIPAY_PUBLIC_KEY")
+    alipay_gateway: AnyHttpUrl = Field(validation_alias="ALIPAY_GATEWAY")
+    alipay_notify_url: AnyHttpUrl = Field(validation_alias="ALIPAY_NOTIFY_URL")
+    payment_expiration_seconds: int = Field(
+        default=300,
+        validation_alias="PAYMENT_EXPIRATION_SECONDS",
+        ge=60,
+        le=1800,
+    )
+    payment_notify_max_bytes: int = Field(
+        default=64 * 1024,
+        validation_alias="PAYMENT_NOTIFY_MAX_BYTES",
+        ge=1024,
+        le=1024 * 1024,
+    )
+
+    socket_allowed_origins: str = Field(
+        default="http://127.0.0.1:5173,http://localhost:5173",
+        validation_alias="SOCKET_ALLOWED_ORIGINS",
+    )
+    socket_redis_channel: str = Field(
+        default="en-learning:socketio",
+        validation_alias="SOCKET_REDIS_CHANNEL",
+        min_length=1,
+    )
+
+    email_host: str = Field(validation_alias="EMAIL_HOST", min_length=1)
+    email_port: int = Field(validation_alias="EMAIL_PORT", ge=1, le=65535)
+    email_use_ssl: bool = Field(default=True, validation_alias="EMAIL_USE_SSL")
+    email_starttls: bool = Field(default=False, validation_alias="EMAIL_STARTTLS")
+    email_user: str = Field(validation_alias="EMAIL_USER", min_length=1)
+    email_password: SecretStr = Field(validation_alias="EMAIL_PASSWORD")
+    email_from: str = Field(validation_alias="EMAIL_FROM", min_length=3)
+    digest_timezone: str = Field(default="Asia/Shanghai", validation_alias="DIGEST_TIMEZONE")
+    worker_job_timeout_seconds: int = Field(
+        default=30,
+        validation_alias="WORKER_JOB_TIMEOUT_SECONDS",
+        ge=5,
+        le=300,
+    )
+    worker_job_lock_seconds: int = Field(
+        default=60,
+        validation_alias="WORKER_JOB_LOCK_SECONDS",
+        ge=10,
+        le=600,
+    )
+    worker_job_max_attempts: int = Field(
+        default=4,
+        validation_alias="WORKER_JOB_MAX_ATTEMPTS",
+        ge=1,
+        le=10,
+    )
+    worker_retry_delay_seconds: int = Field(
+        default=5,
+        validation_alias="WORKER_RETRY_DELAY_SECONDS",
+        ge=1,
+        le=300,
     )
 
     deepseek_base_url: AnyHttpUrl = Field(
@@ -198,6 +261,9 @@ class Settings(BaseSettings):
         "minio_access_key",
         "minio_secret_key",
         "deepseek_api_key",
+        "alipay_private_key",
+        "alipay_public_key",
+        "email_password",
     )
     @classmethod
     def validate_non_empty_secret(cls, value: SecretStr) -> SecretStr:
@@ -220,6 +286,19 @@ class Settings(BaseSettings):
             raise ValueError("AI conversation lock TTL must exceed LLM total timeout")
         if (self.bocha_search_url is None) != (self.bocha_api_key is None):
             raise ValueError("BOCHA_SEARCH_URL and BOCHA_API_KEY must be configured together")
+        if self.worker_job_lock_seconds <= self.worker_job_timeout_seconds:
+            raise ValueError("worker job lock must exceed worker job timeout")
+        if self.email_use_ssl and self.email_starttls:
+            raise ValueError("EMAIL_USE_SSL and EMAIL_STARTTLS cannot both be enabled")
+        origins = self.socket_allowed_origins_list
+        if not origins:
+            raise ValueError("SOCKET_ALLOWED_ORIGINS must contain at least one origin")
+        if self.environment == "production" and "*" in origins:
+            raise ValueError("wildcard Socket.IO origins are forbidden in production")
+        try:
+            ZoneInfo(self.digest_timezone)
+        except ZoneInfoNotFoundError as exception:
+            raise ValueError("DIGEST_TIMEZONE must be a valid IANA timezone") from exception
         return self
 
     @property
@@ -229,6 +308,12 @@ class Settings(BaseSettings):
     @property
     def minio_host(self) -> str:
         return f"{self.minio_endpoint}:{self.minio_port}"
+
+    @property
+    def socket_allowed_origins_list(self) -> list[str]:
+        return [
+            origin.strip() for origin in self.socket_allowed_origins.split(",") if origin.strip()
+        ]
 
 
 @lru_cache(maxsize=1)

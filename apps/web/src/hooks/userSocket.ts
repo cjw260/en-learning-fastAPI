@@ -7,7 +7,8 @@ export const useSocket = () => {
     //连接socket
     const connect = () => {
         const userId = userStore.user?.id
-        if (!userId) return 
+        const accessToken = userStore.getAccessToken
+        if (!userId || !accessToken) return
         if (socket) return//如果已经连接了，则不再连接
         socket = io(socketUrl, {
             transports: ['websocket'],//使用websocket协议
@@ -18,6 +19,9 @@ export const useSocket = () => {
             reconnectionDelayMax: 5000,//重连间隔最大值
             query: {
                 userId
+            },
+            auth: {
+                token: accessToken
             }
         })
         //为了treeeshaking，将socket保存到import.meta.hot.data中, 在生产环境中，socket会被treeeshaking掉

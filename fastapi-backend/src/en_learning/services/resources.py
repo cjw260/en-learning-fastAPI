@@ -8,6 +8,8 @@ from redis.asyncio import Redis
 
 from en_learning.common.config import Settings
 from en_learning.db.session import Database
+from en_learning.realtime.socketio import SocketPublisher
+from en_learning.services.email import EmailSender
 from en_learning.services.object_storage import ObjectStorage
 
 ReadinessCheck = Callable[[], Awaitable[None]]
@@ -47,6 +49,8 @@ class ResourceSet:
         self.database = Database(settings)
         self.redis = Redis.from_url(str(settings.redis_url), decode_responses=True)
         self.object_storage = ObjectStorage(settings)
+        self.socket_publisher = SocketPublisher(settings)
+        self.email_sender = EmailSender(settings)
         self.http = httpx.AsyncClient(timeout=timeout, follow_redirects=False)
         self.llm_http = httpx.AsyncClient(
             base_url=str(settings.deepseek_base_url),
@@ -72,6 +76,7 @@ class ResourceSet:
             self.llm_http.aclose(),
             self.http.aclose(),
             self.object_storage.close(),
+            self.socket_publisher.close(),
             self.redis.aclose(),
             self.database.close(),
             return_exceptions=True,

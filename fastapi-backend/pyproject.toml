@@ -11,11 +11,13 @@ requires-python = "==3.12.*"
 dependencies = [
   "alembic==1.19.1",
   "asyncpg==0.31.0",
+  "cryptography==50.0.0",
   "fastapi==0.141.1",
   "httpx==0.28.1",
   "minio==7.2.20",
   "pydantic==2.13.4",
   "pydantic-settings==2.15.0",
+  "python-socketio==5.16.3",
   "redis==8.1.0",
   "sqlalchemy[asyncio]==2.0.52",
   "taskiq==0.12.4",
@@ -26,6 +28,7 @@ dependencies = [
 
 [project.scripts]
 en-learning-bootstrap = "en_learning.bootstrap.cli:main"
+en-learning-worker-replay = "en_learning.worker.replay:main"
 
 [dependency-groups]
 dev = [
@@ -61,5 +64,5 @@ packages = ["en_learning"]
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["minio.*", "taskiq_redis.*"]
+module = ["minio.*", "socketio.*", "taskiq_redis.*"]
 ignore_missing_imports = true

@@ -53,7 +53,7 @@ def create_http_application(
                 "description": (
                     "P03 AI routes."
                     if service is ServiceKind.AI
-                    else "P04 user, course, word-book, learning and tracker routes."
+                    else "P05 core business, payment and realtime routes."
                 ),
             },
         ],

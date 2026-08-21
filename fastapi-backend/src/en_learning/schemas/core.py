@@ -221,6 +221,26 @@ class MasterWordsResult(StrictModel):
     word_number: int = Field(alias="wordNumber")
 
 
+class CreatePaymentRequest(StrictModel):
+    # These three fields remain accepted for the legacy Vue payload, but the server
+    # deliberately ignores them and reads all settlement facts from Course.
+    subject: str | None = Field(default=None, max_length=200)
+    body: str | None = Field(default=None, max_length=2000)
+    total_amount: str | None = Field(default=None, alias="total_amount", max_length=64)
+    course_id: str = Field(alias="courseId", min_length=1, max_length=128)
+
+
+class CreatePaymentResult(StrictModel):
+    pay_url: str = Field(alias="payUrl")
+    time_expire: int = Field(alias="timeExpire")
+
+
+class PaymentStatusResult(StrictModel):
+    out_trade_no: str = Field(alias="outTradeNo")
+    trade_status: str = Field(alias="tradeStatus")
+    is_purchased: bool = Field(alias="isPurchased")
+
+
 class VisitorRequest(StrictModel):
     anonymous_id: str = Field(alias="anonymousId", min_length=8, max_length=128)
     user_id: str | None = Field(default=None, alias="userId", min_length=1, max_length=128)
