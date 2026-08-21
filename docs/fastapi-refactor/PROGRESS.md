@@ -6,22 +6,22 @@
 
 | 字段 | 值 |
 |---|---|
-| Active phase | `P01`：FastAPI 工程骨架与数据库基础 |
-| Phase status | `IN_PROGRESS` |
-| Phase lock | `LOCKED`（本次只允许执行 P01） |
-| Allowed scope | `fastapi-backend/` 工程与测试、P01 文档/决策/进度、权威计划状态 |
-| Forbidden scope | P02 数据导入、P03+ 业务迁移、NestJS 业务改动、生产部署 |
+| Active phase | `NONE`（P01 已完成，等待用户在新执行中启动 P02） |
+| Phase status | `COMPLETED` |
+| Phase lock | `CLOSED`（不得在本次执行中启动 P02） |
+| Allowed scope | 仅记录 P01 完成状态 |
+| Forbidden scope | P02-P07 的编码、数据初始化、业务迁移和生产部署 |
 | Required skill | `en-learning-backend-refactor` |
 | Skill status | `LOADED` |
 | Skill loaded at | 2026-08-21 13:41 CST（P01 依赖安装后续作重新加载） |
-| Next phase | `P02`，即使 P01 完成也不得在本次执行中启动 |
+| Next phase | `P02`，必须由用户在新的执行中明确启动 |
 
 ## 阶段状态
 
 | 阶段 | 状态 | 完成提交 | 备注 |
 |---|---|---|---|
 | P00 仓库、计划与基线 | `COMPLETED` | `984d60e` | 主提交已推送到新 origin 的阶段分支 |
-| P01 工程骨架与数据库基础 | `IN_PROGRESS` | — | 当前唯一执行阶段 |
+| P01 工程骨架与数据库基础 | `COMPLETED` | `bb0a24b` | 主提交已推送到 `origin/codex/p01-fastapi-foundation` |
 | P02 数据初始化 | `NOT_STARTED` | — | — |
 | P03 AI 服务 | `NOT_STARTED` | — | — |
 | P04 核心业务 API | `NOT_STARTED` | — | — |
@@ -104,13 +104,13 @@
 
 ## 当前阻塞
 
-无实现或验收阻塞。用户已手动补充 `greenlet 3.5.5`，P01 全部自动化验收和最终自审通过。阶段仍保持 `IN_PROGRESS`，直到当前 P01 文件安全提交并推送到新 `origin`。
+无 P01 阻塞。用户已手动补充 `greenlet 3.5.5`；P01 全部自动化验收和最终自审通过，主提交 `bb0a24b` 已安全推送到新 `origin`。
 
 ## 准确下一动作
 
-仅暂存 P01 代码与 `AGENTS.md`、`docs/fastapi-refactor/DECISIONS.md`、本文件、P01 阶段文件，明确排除 `.agents/`、`.codex/`、`.env`、`.venv` 和缓存；检查暂存 diff 后创建 P01 主提交并推送。推送成功后再记录完成状态并推送完成记录，结束本次执行。
+结束本次执行，不启动 P02。用户在新的执行中明确启动 P02 后，必须重新加载 `en-learning-backend-refactor`，读取根 `AGENTS.md`、本文件和 P02 阶段文件，再建立新的阶段锁。
 
-## P01 已完成动作（待验收）
+## P01 已完成动作
 
 1. 建立 Python 3.12 `pyproject.toml`、安全 `.env.example`、本地忽略规则与启动/质量命令。
 2. 建立 Core API、AI API 两个 factory 入口，保留 `/api/v1/`、`/ai/v1/` 根契约。
@@ -123,16 +123,16 @@
 9. 增加配置、契约、健康、生命周期、进程、ORM、worker 重试和真实迁移往返测试；最终 `25 passed`。
 10. 完成兼容、安全、迁移、异步、资源、测试和范围自审；修正健康 envelope 默认值、未知异常日志脱敏、SQLAlchemy async extra 和 Uvicorn 信号断言，并完成复测。
 
-## 阶段结束记录模板
+## P01 阶段结束记录
 
 ```text
-Completed at: 2026-08-21
-Review result: PASS；仅 13 个 P00 文档进入主提交，无运行时代码、秘密或无关用户文件
-Verification commands: 路径检查、空白检查、冲突标记检查、常见密钥检查、git diff --cached --check、远端 commit 对比
-Commit: 984d60e (P00 主提交)
-Branch: codex/p00-repository-baseline
+Completed at: 2026-08-21 13:52 CST
+Review result: PASS；兼容、安全、迁移、异步、资源、测试和范围审查无剩余阻塞问题
+Verification commands: uv lock --check --offline；ruff format --check；ruff check；mypy src；pytest -q（25 passed）；git diff --cached --check；敏感/范围扫描
+Commit: bb0a24b (P01 主提交)
+Branch: codex/p01-fastapi-foundation
 Remote: origin -> https://github.com/cjw260/en-learning-fastAPI.git
-Push result: PASS
-Remaining non-blocking risks: 旧 NestJS 依赖未安装，无法执行运行时 API 基线；仓库原本没有测试/CI
-Next phase start condition: 用户在新执行中明确启动 P01，并重新加载必需 skill
+Push result: PASS；P01 主提交已推送，完成记录随当前提交推送
+Remaining non-blocking risks: 初始 Alembic 迁移仅适用于空库；生产 schema 接管须在 P07 经批准后比较并 stamp。业务任务退避、死信、幂等和重放仍按计划留在 P05
+Next phase start condition: 用户在新执行中明确启动 P02，并重新加载必需 skill
 ```
