@@ -6,10 +6,10 @@
 
 | 字段 | 值 |
 |---|---|
-| Active phase | `P06`：前端适配与全链路验收 |
-| Phase status | `IN_PROGRESS` |
-| Phase lock | `P06 ONLY`（不得在本次执行中启动 P07） |
-| Allowed scope | 最小前端安全适配、契约/E2E/并发与资源验收、验收报告、容量建议和 P07 上线前只读清单 |
+| Active phase | `P06`：前端适配与全链路验收（已完成） |
+| Phase status | `COMPLETED` |
+| Phase lock | `P06 ONLY`（仅完成记录；不得在本次执行中启动 P07） |
+| Allowed scope | P06 完成记录、提交与推送；禁止新增运行时实现 |
 | Forbidden scope | P07 生产部署、数据库切换、Nginx/systemd/PM2、真实支付、生产凭证/数据与旧服务处置 |
 | Required skill | `en-learning-backend-refactor` |
 | Skill status | `LOADED` |
@@ -26,7 +26,7 @@
 | P03 AI 服务 | `COMPLETED` | `fc0e503` | 主提交已推送到 `origin/codex/p03-ai-service` |
 | P04 核心业务 API | `COMPLETED` | `b51f41b` | 主提交已推送到 `origin/codex/p04-core-api` |
 | P05 支付/Socket.IO/worker | `COMPLETED` | `d9ed248` | 主提交已推送到 `origin/codex/p05-payment-socket-worker` |
-| P06 前端与全链路验收 | `IN_PROGRESS` | — | 当前阶段锁 |
+| P06 前端与全链路验收 | `COMPLETED` | `4c912aa` | 主提交已推送到 `origin/codex/p06-frontend-verification` |
 | P07 灰度上线与清理 | `NOT_STARTED` | — | — |
 
 ## P06 启动基线
@@ -244,11 +244,11 @@
 
 ## 当前阻塞
 
-无 P06 功能或验收阻塞。实现、自动化、实际浏览器、契约、并发/资源、生产构建和 P07 只读清单均已通过；尚待最终 staged diff/敏感信息/范围审查、主提交与安全推送。
+无 P06 阻塞。实现、自动化、实际浏览器、契约、并发/资源、生产构建、staged diff/敏感信息/范围审查和主提交推送均通过。
 
 ## 准确下一动作
 
-只暂存 P06 文件并排除 `.agents/`、`.codex/`，完成 staged diff/敏感/生产范围检查，创建并推送 P06 主提交；推送成功后才把阶段标记为 `COMPLETED`，再提交并推送完成记录。不得启动 P07。
+结束本次执行，不启动 P07。用户在新的执行中明确授权 P07 后，必须重新加载 `en-learning-backend-refactor`，重读根计划、进度和 P07 文档，并额外确认生产部署授权。
 
 ## P06 已完成动作
 
@@ -262,6 +262,20 @@
 8. 浏览器恰逢 access token 过期，Core 日志证明支付创建 401 → 唯一 refresh 200 → 原请求 200；签名回调、状态查询、我的课程和 wordNumber=10 全部闭环。
 9. 本机每端点 200 请求、并发 20 的两轮冒烟均 0 错误且稳定轮 P95 < 500 ms；PG 连接 `6→8→8`、Redis clients `9→9→9`、Core FD `89→91→91`，未见持续增长。
 10. 新增 P06 兼容矩阵、验收报告、容量起点与 P07 只读清单；最终 Web `9 passed`、Python `81 passed`，uv/Ruff/mypy/tracker type-check/Web production build 全部通过。
+
+## P06 阶段结束记录
+
+```text
+Completed at: 2026-08-21 23:15 CST
+Review result: PASS；兼容、认证/refresh、SSE 取消/超时、Socket 身份/重连、支付最终确认、tracker、浏览器全旅程、资源释放、并发/延迟、日志秘密、生产构建和 P06 范围无剩余阻塞问题
+Verification commands: UV_CACHE_DIR=/private/tmp/en-learning-p06-uv-cache uv lock --check --offline；ruff format --check；ruff check；mypy src；pytest -q（81 passed）；pnpm --filter @en/web test（9 passed）；pnpm --filter @en/tracker type-check；pnpm --filter @en/web build；实际浏览器注册/登录/资料/头像/课程/支付/学习/词库/AI/tracker；两轮 200 请求/并发 20 冒烟；git diff --cached --check；敏感/生产范围扫描
+Commit: 4c912aa (P06 主提交)
+Branch: codex/p06-frontend-verification
+Remote: origin -> https://github.com/cjw260/en-learning-fastAPI.git
+Push result: PASS；P06 主提交已推送，完成记录随当前提交推送
+Remaining non-blocking risks: 本阶段使用生成 RSA、确定性 LLM/支付宝/邮件替身与本机短时并发，不代表真实供应商、生产峰值或长期 soak；Three.js vendor chunk 约 789 kB（gzip 约 205 kB）仍有构建警告。生产备份、真实小额支付、Nginx/systemd、灰度指标、回退演练、旧 PM2/仓库处置均未触碰，必须在新执行获得 P07 明确授权
+Next phase start condition: 用户在新的执行中明确启动 P07，重新加载必需 skill，并明确授权生产部署
+```
 
 ## P05 已完成动作
 

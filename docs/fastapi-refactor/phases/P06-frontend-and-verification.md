@@ -1,6 +1,6 @@
 # P06：前端适配与全链路验收
 
-状态：`IN_PROGRESS`
+状态：`COMPLETED`
 
 ## 启动条件
 
