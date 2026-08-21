@@ -6,15 +6,15 @@
 
 | 字段 | 值 |
 |---|---|
-| Active phase | `P03`：AI 服务迁移 |
-| Phase status | `IN_PROGRESS` |
-| Phase lock | `P03 ONLY` |
-| Allowed scope | `/ai/v1` prompt/chat/history、JWT 身份、LLM/搜索适配、SSE、AI 历史迁移、必要前端 token 适配、测试与 AI 灰度文档 |
-| Forbidden scope | P04 核心业务、P05 支付/Socket.IO/worker、P06 全链路适配、生产部署和切流 |
+| Active phase | `NONE`（P03 已完成，等待用户在新执行中启动 P04） |
+| Phase status | `COMPLETED` |
+| Phase lock | `CLOSED`（不得在本次执行中启动 P04） |
+| Allowed scope | 仅记录 P03 完成状态 |
+| Forbidden scope | P04-P07 的核心业务、支付、实时通信、worker、全链路适配、生产部署和切流 |
 | Required skill | `en-learning-backend-refactor` |
 | Skill status | `LOADED` |
 | Skill loaded at | 2026-08-21（P03 新执行重新加载） |
-| Next phase | `P04`，仅在 P03 完成并由用户在新的执行中明确启动 |
+| Next phase | `P04`，仅由用户在新的执行中明确启动并重新通过 skill 门禁 |
 
 ## 阶段状态
 
@@ -23,7 +23,7 @@
 | P00 仓库、计划与基线 | `COMPLETED` | `984d60e` | 主提交已推送到新 origin 的阶段分支 |
 | P01 工程骨架与数据库基础 | `COMPLETED` | `bb0a24b` | 主提交已推送到 `origin/codex/p01-fastapi-foundation` |
 | P02 数据初始化 | `COMPLETED` | `8c5bf25` | 主提交已推送到 `origin/codex/p02-data-bootstrap` |
-| P03 AI 服务 | `IN_PROGRESS` | — | 用户已明确启动；阶段锁已建立 |
+| P03 AI 服务 | `COMPLETED` | `fc0e503` | 主提交已推送到 `origin/codex/p03-ai-service` |
 | P04 核心业务 API | `NOT_STARTED` | — | — |
 | P05 支付/Socket.IO/worker | `NOT_STARTED` | — | — |
 | P06 前端与全链路验收 | `NOT_STARTED` | — | — |
@@ -161,11 +161,11 @@
 
 ## 当前阻塞
 
-无 P03 阻塞。实现、实际浏览器验收、最终自动化与前端构建均通过；正在完成最终暂存范围/敏感信息审查和安全推送。
+无 P03 阻塞。实现、实际浏览器验收、最终自动化/前端构建、staged diff/敏感信息审查和主提交推送均通过。
 
 ## 准确下一动作
 
-只暂存 P03 文件，完成最终 staged diff/秘密扫描后创建主提交并推送；随后记录完成提交并结束，不启动 P04。
+结束本次执行，不启动 P04。用户在新的执行中明确启动 P04 后，必须重新加载 `en-learning-backend-refactor`，读取根 `AGENTS.md`、本文件和 P04 阶段文件，再建立新的阶段锁。
 
 ## P03 已完成动作
 
@@ -179,6 +179,20 @@
 8. JSON 日志只输出哈希用户引用、角色、功能开关、分片/字符、token 用量、延迟和失败类型，不输出提示词、令牌、密钥或上游正文。
 9. 自动化最终 `58 passed`；uv lock、Ruff format/lint、mypy、Alembic 往返/check、真实 Redis、Web type-check/build 全部通过。
 10. 实际 Codex 内置浏览器使用本机隔离服务验证普通/深度聊天、五角色、刷新恢复和角色隔离；临时服务、数据库、Redis 与构建报告均已清理。
+
+## P03 阶段结束记录
+
+```text
+Completed at: 2026-08-21 15:06 CST
+Review result: PASS；兼容、安全、迁移、事务、异步取消、资源释放、Redis 并发、日志秘密、浏览器体验、测试覆盖和 P03 范围无剩余阻塞问题
+Verification commands: uv lock --check --offline；ruff format --check；ruff check；mypy src；pytest -q（58 passed）；pnpm --filter @en/web type-check；pnpm --filter @en/web build-only；实际浏览器普通/深度/history/角色隔离；git diff --cached --check；敏感/范围扫描
+Commit: fc0e503 (P03 主提交)
+Branch: codex/p03-ai-service
+Remote: origin -> https://github.com/cjw260/en-learning-fastAPI.git
+Push result: PASS；P03 主提交已推送，完成记录随当前提交推送
+Remaining non-blocking risks: P03 使用 mock DeepSeek/Bocha 完成确定性自动化与浏览器验收，真实供应商凭证/配额/网络和生产 Nginx 灰度仍须另行授权验证。旧 LangGraph 历史按 D008 不迁移；回退 NestJS 后 FastAPI 窗口的新历史暂不可见。前端构建保留既有 package type/chunk-size 警告，不影响本阶段通过
+Next phase start condition: 用户在新执行中明确启动 P04，并重新加载必需 skill
+```
 
 ## P02 已完成动作
 

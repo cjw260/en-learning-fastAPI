@@ -1,6 +1,6 @@
 # P03：AI 服务迁移
 
-状态：`IN_PROGRESS`
+状态：`COMPLETED`
 
 ## 启动条件
 
@@ -23,14 +23,14 @@ FastAPI 在 `/ai/v1` 提供 prompt 列表、聊天 SSE 和聊天历史；前端�
 
 ## 验收标准
 
-- [ ] `/ai/v1` 路径、方法、prompt/chat/history schema 兼容。
-- [ ] reasoning/chat 分片、顺序、结束和 header 正确。
-- [ ] 断连、超时、上游失败、无效角色和超长输入受控。
-- [ ] AI 身份不可由 body/query userId 越权伪造。
-- [ ] 新历史持久、隔离、重启可恢复；旧历史为空已记录。
-- [ ] 日志不含密钥或完整敏感对话。
-- [ ] 前端普通/深度思考/历史浏览器验证通过。
-- [ ] 未实现 Core 业务、支付、Socket.IO 或 worker。
+- [x] `/ai/v1` 路径、方法、prompt/chat/history schema 兼容。
+- [x] reasoning/chat 分片、顺序、结束和 header 正确。
+- [x] 断连、超时、上游失败、无效角色和超长输入受控。
+- [x] AI 身份不可由 body/query userId 越权伪造。
+- [x] 新历史持久、隔离、重启可恢复；旧历史为空已记录。
+- [x] 日志不含密钥或完整敏感对话。
+- [x] 前端普通/深度思考/历史浏览器验证通过。
+- [x] 未实现 Core 业务、支付、Socket.IO 或 worker。
 
 ## 回退
 
