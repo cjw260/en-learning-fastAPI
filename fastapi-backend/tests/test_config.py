@@ -55,8 +55,14 @@ def test_json_log_formatter_includes_request_id_without_secrets() -> None:
     )
     record.request_id = "request-123"
     record.path = "/health/live"
+    record.promptTokens = 12
+    record.latencyMs = 34
+    record.unapprovedSecret = "must-not-be-rendered"
     rendered = JsonFormatter().format(record)
     payload = json.loads(rendered)
     assert payload["requestId"] == "request-123"
     assert payload["path"] == "/health/live"
+    assert payload["promptTokens"] == 12
+    assert payload["latencyMs"] == 34
+    assert "must-not-be-rendered" not in rendered
     assert "secret" not in rendered.lower()

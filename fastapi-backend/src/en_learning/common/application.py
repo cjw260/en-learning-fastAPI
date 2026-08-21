@@ -47,7 +47,12 @@ def create_http_application(
         lifespan=lifespan,
         openapi_tags=[
             {"name": "health", "description": "Process liveness and dependency readiness."},
-            {"name": service.value, "description": "P01 route boundary; no business handlers."},
+            {
+                "name": service.value,
+                "description": (
+                    "P03 AI routes." if service is ServiceKind.AI else "Core API route boundary."
+                ),
+            },
         ],
     )
     app.add_middleware(RequestContextMiddleware)

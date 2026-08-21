@@ -73,6 +73,7 @@ def test_one_command_bootstrap_on_empty_services_is_idempotent(
         "LOG_LEVEL",
         "DATABASE_URL",
         "REDIS_URL",
+        "SECRET_KEY",
         "MINIO_ENDPOINT",
         "MINIO_PORT",
         "MINIO_USE_SSL",

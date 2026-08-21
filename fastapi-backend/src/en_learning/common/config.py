@@ -1,7 +1,7 @@
 from functools import lru_cache
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import AnyHttpUrl, Field, RedisDsn, SecretStr, field_validator
+from pydantic import AnyHttpUrl, Field, RedisDsn, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -42,6 +42,8 @@ class Settings(BaseSettings):
 
     redis_url: RedisDsn = Field(validation_alias="REDIS_URL")
 
+    jwt_secret: SecretStr = Field(validation_alias="SECRET_KEY")
+
     minio_endpoint: str = Field(validation_alias="MINIO_ENDPOINT", min_length=1)
     minio_port: int = Field(default=9000, validation_alias="MINIO_PORT", ge=1, le=65535)
     minio_use_ssl: bool = Field(default=False, validation_alias="MINIO_USE_SSL")
@@ -54,6 +56,85 @@ class Settings(BaseSettings):
         validation_alias="DEEPSEEK_BASE_URL",
     )
     deepseek_api_key: SecretStr = Field(validation_alias="DEEPSEEK_API_KEY")
+    deepseek_chat_model: str = Field(
+        default="deepseek-chat",
+        validation_alias="DEEPSEEK_CHAT_MODEL",
+        min_length=1,
+    )
+    deepseek_reasoner_model: str = Field(
+        default="deepseek-reasoner",
+        validation_alias="DEEPSEEK_REASONER_MODEL",
+        min_length=1,
+    )
+    bocha_search_url: AnyHttpUrl | None = Field(
+        default=None,
+        validation_alias="BOCHA_SEARCH_URL",
+    )
+    bocha_api_key: SecretStr | None = Field(
+        default=None,
+        validation_alias="BOCHA_API_KEY",
+    )
+
+    llm_connect_timeout_seconds: float = Field(
+        default=5,
+        validation_alias="LLM_CONNECT_TIMEOUT_SECONDS",
+        gt=0,
+        le=60,
+    )
+    llm_first_token_timeout_seconds: float = Field(
+        default=30,
+        validation_alias="LLM_FIRST_TOKEN_TIMEOUT_SECONDS",
+        gt=0,
+        le=180,
+    )
+    llm_total_timeout_seconds: float = Field(
+        default=120,
+        validation_alias="LLM_TOTAL_TIMEOUT_SECONDS",
+        gt=0,
+        le=600,
+    )
+    llm_max_retries: int = Field(
+        default=1,
+        validation_alias="LLM_MAX_RETRIES",
+        ge=0,
+        le=3,
+    )
+    ai_max_input_characters: int = Field(
+        default=4_000,
+        validation_alias="AI_MAX_INPUT_CHARACTERS",
+        ge=100,
+        le=20_000,
+    )
+    ai_history_message_limit: int = Field(
+        default=40,
+        validation_alias="AI_HISTORY_MESSAGE_LIMIT",
+        ge=2,
+        le=200,
+    )
+    ai_sse_heartbeat_seconds: float = Field(
+        default=10,
+        validation_alias="AI_SSE_HEARTBEAT_SECONDS",
+        gt=0,
+        le=30,
+    )
+    ai_conversation_lock_ttl_seconds: int = Field(
+        default=150,
+        validation_alias="AI_CONVERSATION_LOCK_TTL_SECONDS",
+        ge=10,
+        le=900,
+    )
+    ai_search_result_limit: int = Field(
+        default=5,
+        validation_alias="AI_SEARCH_RESULT_LIMIT",
+        ge=1,
+        le=10,
+    )
+    ai_search_context_characters: int = Field(
+        default=8_000,
+        validation_alias="AI_SEARCH_CONTEXT_CHARACTERS",
+        ge=500,
+        le=20_000,
+    )
 
     http_timeout_seconds: float = Field(
         default=10,
@@ -75,12 +156,34 @@ class Settings(BaseSettings):
             raise ValueError("must be a PostgreSQL URL")
         return value
 
-    @field_validator("minio_access_key", "minio_secret_key", "deepseek_api_key")
+    @field_validator(
+        "jwt_secret",
+        "minio_access_key",
+        "minio_secret_key",
+        "deepseek_api_key",
+    )
     @classmethod
     def validate_non_empty_secret(cls, value: SecretStr) -> SecretStr:
         if not value.get_secret_value().strip():
             raise ValueError("must not be empty")
         return value
+
+    @field_validator("bocha_api_key")
+    @classmethod
+    def validate_optional_secret(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is not None and not value.get_secret_value().strip():
+            raise ValueError("must not be empty")
+        return value
+
+    @model_validator(mode="after")
+    def validate_ai_timeouts(self) -> Self:
+        if self.llm_first_token_timeout_seconds > self.llm_total_timeout_seconds:
+            raise ValueError("LLM first-token timeout must not exceed total timeout")
+        if self.ai_conversation_lock_ttl_seconds <= self.llm_total_timeout_seconds:
+            raise ValueError("AI conversation lock TTL must exceed LLM total timeout")
+        if (self.bocha_search_url is None) != (self.bocha_api_key is None):
+            raise ValueError("BOCHA_SEARCH_URL and BOCHA_API_KEY must be configured together")
+        return self
 
     @property
     def async_database_url(self) -> str:

@@ -180,7 +180,7 @@ async def test_unexpected_error_is_generic_and_log_safe(settings: Settings) -> N
     assert '"exceptionType":"RuntimeError"' in stream.getvalue()
 
 
-def test_openapi_contains_only_p01_service_boundaries(settings: Settings) -> None:
+def test_openapi_contains_only_approved_service_boundaries(settings: Settings) -> None:
     for service, router, root_path in (
         (ServiceKind.CORE, core_router, "/api/v1/"),
         (ServiceKind.AI, ai_router, "/ai/v1/"),
@@ -191,7 +191,10 @@ def test_openapi_contains_only_p01_service_boundaries(settings: Settings) -> Non
             resource_factory=lambda _: FakeResources({}),
         )
         app.include_router(router)
-        assert set(app.openapi()["paths"]) == {root_path, "/health/live", "/health/ready"}
+        expected = {root_path, "/health/live", "/health/ready"}
+        if service is ServiceKind.AI:
+            expected.update({"/ai/v1/prompt/list", "/ai/v1/chat", "/ai/v1/chat/history"})
+        assert set(app.openapi()["paths"]) == expected
 
 
 @pytest.mark.asyncio

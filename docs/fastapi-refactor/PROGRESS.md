@@ -6,15 +6,15 @@
 
 | 字段 | 值 |
 |---|---|
-| Active phase | `NONE`（P02 已完成，等待用户在新执行中启动 P03） |
-| Phase status | `COMPLETED` |
-| Phase lock | `CLOSED`（不得在本次执行中启动 P03） |
-| Allowed scope | 仅记录 P02 完成状态 |
-| Forbidden scope | P03-P07 的 API/业务迁移、认证、支付、实时通信、生产部署和切流 |
+| Active phase | `P03`：AI 服务迁移 |
+| Phase status | `IN_PROGRESS` |
+| Phase lock | `P03 ONLY` |
+| Allowed scope | `/ai/v1` prompt/chat/history、JWT 身份、LLM/搜索适配、SSE、AI 历史迁移、必要前端 token 适配、测试与 AI 灰度文档 |
+| Forbidden scope | P04 核心业务、P05 支付/Socket.IO/worker、P06 全链路适配、生产部署和切流 |
 | Required skill | `en-learning-backend-refactor` |
 | Skill status | `LOADED` |
-| Skill loaded at | 2026-08-21 13:58 CST（P02 新执行重新加载） |
-| Next phase | `P03`，仅在 P02 完成并由用户在新执行中明确启动 |
+| Skill loaded at | 2026-08-21（P03 新执行重新加载） |
+| Next phase | `P04`，仅在 P03 完成并由用户在新的执行中明确启动 |
 
 ## 阶段状态
 
@@ -23,11 +23,38 @@
 | P00 仓库、计划与基线 | `COMPLETED` | `984d60e` | 主提交已推送到新 origin 的阶段分支 |
 | P01 工程骨架与数据库基础 | `COMPLETED` | `bb0a24b` | 主提交已推送到 `origin/codex/p01-fastapi-foundation` |
 | P02 数据初始化 | `COMPLETED` | `8c5bf25` | 主提交已推送到 `origin/codex/p02-data-bootstrap` |
-| P03 AI 服务 | `NOT_STARTED` | — | — |
+| P03 AI 服务 | `IN_PROGRESS` | — | 用户已明确启动；阶段锁已建立 |
 | P04 核心业务 API | `NOT_STARTED` | — | — |
 | P05 支付/Socket.IO/worker | `NOT_STARTED` | — | — |
 | P06 前端与全链路验收 | `NOT_STARTED` | — | — |
 | P07 灰度上线与清理 | `NOT_STARTED` | — | — |
+
+## P03 启动基线
+
+| 检查 | 证据 | 状态 |
+|---|---|---|
+| 用户授权 | 用户在 2026-08-21 新执行中明确要求进行下一阶段 | PASS |
+| 必需 skill | 本次完整读取 `en-learning-backend-refactor` | PASS |
+| 仓库标识 | 根目录与四项标识全部存在 | PASS |
+| P02 前置条件 | `8c5bf25` 主提交与 `4b82d7f` 完成记录已推送 | PASS |
+| 启动分支 | 从已完成 P02 创建 `codex/p03-ai-service` | PASS |
+| 启动工作区 | 仅 `.agents/`、`.codex/` 为既有未跟踪内容，继续保护且不提交 | PASS |
+| 旧系统基线 | 已重读 prompt/chat/history、JWT claims、DeepSeek/Bocha、LangGraph checkpoint、SSE 和前端调用 | PASS |
+| 技术映射 | 已完整读取 `framework-parity.md`，锁定 ASGI 流、请求级事务、显式 LLM/搜索适配和多进程 Redis 边界 | PASS |
+| 视觉门禁 | N/A（纯后端）；以路径、schema、SSE headers/事件、OpenAPI、前端实际浏览器状态验收 | N/A |
+
+## P03 验收清单
+
+| 标准 | 验证方法 | 当前证据 | 状态 |
+|---|---|---|---|
+| 本次只执行 P03 | 阶段锁、OpenAPI/模块与最终 diff 范围检查 | 仅 AI 路由/认证/适配/历史、必要前端 Bearer、测试和文档；OpenAPI 无 P04+ | PASS |
+| prompt/chat/history 契约兼容 | HTTP/OpenAPI/前端类型与旧 NestJS 夹具对照 | 五角色顺序、路径/方法、chat 字段、history 数组及成功 envelope 自动化通过 | PASS |
+| SSE 分片、顺序、结束与 headers | mock LLM 流式集成测试 | reasoning→chat、同 chunk 拆分逻辑、自然结束、heartbeat 注释、no-transform/no-buffer headers 通过 | PASS |
+| 断连、超时和上游错误受控 | 取消/超时/DeepSeek 故障注入 | consumer close 关闭上游；首 token/总超时受控；首分片后不重试；错误为通用 SSE | PASS |
+| JWT 身份与越权保护 | access/refresh/伪造/mismatch 测试 | HS256 固定、签名/exp/nbf/access 校验；body/query userId 不一致为 403 | PASS |
+| 历史持久、隔离和重启恢复 | 临时 PostgreSQL 迁移与跨应用读取测试 | 新表 migration 往返/check；user+role 隔离；重启恢复；旧历史初始空数组 | PASS |
+| PostgreSQL/Redis/DeepSeek 故障安全 | 依赖故障与日志秘密扫描 | PostgreSQL/Redis/DeepSeek 故障注入通过；Redis 原子 lease 实测；JSON 日志仅白名单元数据 | PASS |
+| 前端普通/深度思考/历史体验 | 实际浏览器验证 | 旧 Vue 页五角色、普通、深度 reasoning→chat、刷新恢复、normal/master 隔离全部通过 | PASS |
 
 ## P02 启动基线
 
@@ -134,11 +161,24 @@
 
 ## 当前阻塞
 
-无 P02 阻塞。实现、两次全量 ECDICT 空库验收、最终 diff/安全审查和完整复测均通过；主提交 `8c5bf25` 已安全推送到新 `origin`。
+无 P03 阻塞。实现、实际浏览器验收、最终自动化与前端构建均通过；正在完成最终暂存范围/敏感信息审查和安全推送。
 
 ## 准确下一动作
 
-结束本次执行，不启动 P03。用户在新的执行中明确启动 P03 后，必须重新加载 `en-learning-backend-refactor`，读取根 `AGENTS.md`、本文件和 P03 阶段文件，再建立新的阶段锁。
+只暂存 P03 文件，完成最终 staged diff/秘密扫描后创建主提交并推送；随后记录完成提交并结束，不启动 P04。
+
+## P03 已完成动作
+
+1. 迁移五个旧 prompt mode，保持 `/ai/v1/prompt/list` 顺序、字段与成功 envelope。
+2. 实现 legacy-compatible HS256 access token 校验，由 JWT 决定用户，保留但不信任 body/query `userId`。
+3. 实现 DeepSeek 普通/推理流式适配、Bocha 有界不可信搜索上下文、连接/首 token/总时长和首输出前有限重试。
+4. 使用 `StreamingResponse` 输出旧 reasoning/chat data 帧，增加注释心跳、禁缓冲 headers、断连取消和通用错误提示。
+5. 新增 `AIChatThread`/`AIChatMessage` 可逆迁移，按 user+role 隔离、position 排序并支持重启恢复；旧 LangGraph 历史不迁移。
+6. 使用 Redis token lease 串行同一 user+role 生成，原子 compare-delete 释放；依赖不可用时安全失败。
+7. 前端 AI Axios 和 fetch-event-source 补充 Bearer access token，保留现有页面和业务字段。
+8. JSON 日志只输出哈希用户引用、角色、功能开关、分片/字符、token 用量、延迟和失败类型，不输出提示词、令牌、密钥或上游正文。
+9. 自动化最终 `58 passed`；uv lock、Ruff format/lint、mypy、Alembic 往返/check、真实 Redis、Web type-check/build 全部通过。
+10. 实际 Codex 内置浏览器使用本机隔离服务验证普通/深度聊天、五角色、刷新恢复和角色隔离；临时服务、数据库、Redis 与构建报告均已清理。
 
 ## P02 已完成动作
 

@@ -20,11 +20,24 @@ class ManagedResources(Protocol):
     def readiness_checks(self) -> dict[str, ReadinessCheck]: ...
 
 
+class AIResources(Protocol):
+    database: Database
+    redis: Redis
+    http: httpx.AsyncClient
+    llm_http: httpx.AsyncClient
+
+
 class ResourceSet:
     """Process-level clients, created in lifespan and closed in reverse order."""
 
     def __init__(self, settings: Settings) -> None:
         timeout = httpx.Timeout(settings.http_timeout_seconds)
+        llm_timeout = httpx.Timeout(
+            connect=settings.llm_connect_timeout_seconds,
+            read=None,
+            write=settings.http_timeout_seconds,
+            pool=settings.llm_connect_timeout_seconds,
+        )
         self.database = Database(settings)
         self.redis = Redis.from_url(str(settings.redis_url), decode_responses=True)
         self.object_storage = ObjectStorage(settings)
@@ -34,7 +47,7 @@ class ResourceSet:
             headers={
                 "Authorization": f"Bearer {settings.deepseek_api_key.get_secret_value()}",
             },
-            timeout=timeout,
+            timeout=llm_timeout,
             follow_redirects=False,
         )
 

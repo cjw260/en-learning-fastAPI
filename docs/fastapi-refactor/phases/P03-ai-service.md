@@ -1,6 +1,6 @@
 # P03：AI 服务迁移
 
-状态：`NOT_STARTED`
+状态：`IN_PROGRESS`
 
 ## 启动条件
 
@@ -34,4 +34,22 @@ FastAPI 在 `/ai/v1` 提供 prompt 列表、聊天 SSE 和聊天历史；前端�
 
 ## 回退
 
-将 Nginx `/ai/` upstream 指回 NestJS :3001；新历史表独立保留。
+将 Nginx `/ai/` upstream 指回 NestJS :3001；新历史表独立保留。准备好的 AI-only
+灰度、观察和回退步骤见 `../runbooks/P03-ai-canary.md`，本阶段不执行生产变更。
+
+## 已锁定的 P03 契约与安全边界
+
+- prompt 顺序保持 `normal/master/business/qilinge/xiaoman`，路径和成功 envelope 不变。
+- chat 请求保留 `deepThink/webSearch/role/content/userId`，但 JWT access token 是唯一身份来源。
+- chat SSE 仅输出旧前端认识的 reasoning/chat data 帧；心跳使用 SSE 注释，不污染消息解析。
+- history 返回按 position 升序的 `{role, content, reasoning?}` 数组；user+role 隔离，旧历史为空是预期行为。
+- DeepSeek 首输出前才允许重试；超时、上游协议/网络失败均使用不泄密的受控提示。
+- 搜索结果被截断、清理控制字符并明确标记为不可信资料，禁止其中指令覆盖系统提示。
+- 同一 user+role 使用 Redis token lease 串行生成；PostgreSQL、Redis 或 DeepSeek 故障不得暴露内部详情。
+
+## 验收证据（完成记录提交前复核）
+
+- 自动化覆盖 JWT access/refresh/过期/伪造/算法固定、越权、请求校验、SSE 顺序、模型选择、首 token/总超时边界、首分片后不重试、上游关闭、历史持久/隔离/重启和依赖故障。
+- 临时 PostgreSQL 完成 P03 migration upgrade → check → downgrade → upgrade；真实 Redis 覆盖 token lease 的串行与原子释放。
+- 实际 Codex 内置浏览器通过旧 Vue 页面验证五个 prompt、普通聊天、深度 reasoning→chat、刷新后历史恢复以及 normal/master 角色隔离。
+- 浏览器验收只使用本机隔离 PostgreSQL/Redis、mock Core/DeepSeek 和真实 FastAPI/Vue；全部临时进程与数据已清理，未连接生产服务。

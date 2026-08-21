@@ -28,6 +28,18 @@ class JsonFormatter(logging.Formatter):
             "service",
             "failureCount",
             "exceptionType",
+            "operation",
+            "userReference",
+            "role",
+            "deepThink",
+            "webSearch",
+            "chunkCount",
+            "outputCharacters",
+            "promptTokens",
+            "completionTokens",
+            "totalTokens",
+            "latencyMs",
+            "failureKind",
         ):
             if (value := getattr(record, key, None)) is not None:
                 payload[key] = value

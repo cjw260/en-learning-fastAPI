@@ -108,3 +108,20 @@
 - 许可证：固定提交使用 MIT License，Copyright (c) 2017 Linwei；项目保留 `resources/ECDICT-LICENSE.txt` 和来源清单。
 - 映射：保留对外 `frq` 字符串，新增内部 nullable `frqRank`；只有正整数进入 rank，null/空/非数值/0 统一为 null 并按 `frqRank, word, id` 稳定排序。`detail`、`audio` 当前模型无对应字段，P02 明确校验但不导入。
 - 幂等：WordBook 以 `word`、Course 以 `value` 建立唯一键；ID 从自然键确定性生成。词库每 1,000 条独立事务提交，失败报告已提交批次数，重跑从头 upsert 即可恢复。
+
+## D017：P03 使用显式 DeepSeek 流式适配层
+
+- 状态：已确认
+- 决策：AI HTTP 进程通过独立 `DeepSeekClient` 调用 DeepSeek 的 OpenAI-compatible SSE 接口；P03 不把 LangChain/LangGraph 引入请求主路径，也不在框架对象中隐藏连接、重试或事务边界。
+- 模型：普通模式使用 `deepseek-chat`，深度思考使用 `deepseek-reasoner`，均可由环境变量覆盖；Bocha 搜索通过独立适配器提供有界、不可信的参考上下文。
+- 超时与重试：分别限制连接、首 token 和总时长；只允许在尚未向客户端发送模型输出前有限重试，首分片后禁止自动重试，避免重复内容。客户端断开时关闭上游 async iterator。
+- SSE：保持旧前端的 `reasoning`/`chat` JSON 载荷，不新增需要前端解析的业务事件；使用 SSE 注释心跳、`Cache-Control: no-cache, no-transform` 和 `X-Accel-Buffering: no`。
+- 可观测性：只记录哈希用户引用、角色、功能开关、分片/字符数、上游返回的 token 用量、延迟和失败类型；不记录完整提示词、Bearer token、DeepSeek/Bocha 密钥或上游错误正文。
+
+## D018：P03 JWT 身份优先与独立新历史
+
+- 状态：已确认
+- 决策：`prompt/list`、`chat`、`chat/history` 只接受使用既有 `SECRET_KEY` 签发的 HS256 access token；固定校验算法、签名、`exp`、可选 `nbf`、`tokenType=access` 和非空 `userId`。
+- 兼容性：旧前端仍发送 body/query `userId`，P03 暂时保留该字段，但必须与 JWT 用户一致；不一致返回 403，字段本身不参与身份确定。前端 Axios 和 SSE 请求补充 Bearer header。
+- 历史：新建 `AIChatThread`/`AIChatMessage`，以 user+role 唯一隔离并保留消息顺序、reasoning 和重启恢复能力；按 D008 不读取或转换旧 LangGraph checkpoint，首次访问空数组是预期结果。
+- 并发：同一 user+role 在 Redis 中使用带随机 token 和原子 compare-delete 的短租约串行生成；Redis 不可用时拒绝开始聊天，避免无保护的并发写入。

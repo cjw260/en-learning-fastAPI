@@ -85,6 +85,14 @@ export const aiApi = axios.create({
   timeout,
 });
 
+aiApi.interceptors.request.use((config) => {
+  const userStore = useUserStore();
+  if (userStore.getAccessToken) {
+    config.headers.Authorization = `Bearer ${userStore.getAccessToken}`;
+  }
+  return config;
+});
+
 aiApi.interceptors.response.use((res) => {
   return res.data;
 });

@@ -7,6 +7,7 @@ from typing import Any
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     Enum,
     ForeignKey,
     Index,
@@ -120,6 +121,72 @@ class User(TimestampMixin, Base):
         cascade="all",
         passive_deletes=True,
     )
+    ai_chat_threads: Mapped[list[AIChatThread]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class AIChatThread(TimestampMixin, Base):
+    __tablename__ = "AIChatThread"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name="AIChatThread_pkey"),
+        Index("AIChatThread_userId_role_key", "userId", "role", unique=True),
+        CheckConstraint(
+            "role IN ('normal', 'master', 'business', 'qilinge', 'xiaoman')",
+            name="role_values",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(Text)
+    user_id: Mapped[str] = mapped_column(
+        "userId",
+        Text,
+        ForeignKey(
+            "User.id",
+            name="AIChatThread_userId_fkey",
+            ondelete="CASCADE",
+            onupdate="CASCADE",
+        ),
+    )
+    role: Mapped[str] = mapped_column(Text)
+
+    user: Mapped[User] = relationship(back_populates="ai_chat_threads")
+    messages: Mapped[list[AIChatMessage]] = relationship(
+        back_populates="thread",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="AIChatMessage.position",
+    )
+
+
+class AIChatMessage(TimestampMixin, Base):
+    __tablename__ = "AIChatMessage"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name="AIChatMessage_pkey"),
+        Index("AIChatMessage_threadId_position_key", "threadId", "position", unique=True),
+        Index("AIChatMessage_threadId_createdAt_idx", "threadId", "createdAt"),
+        CheckConstraint("role IN ('human', 'ai')", name="role_values"),
+    )
+
+    id: Mapped[str] = mapped_column(Text)
+    thread_id: Mapped[str] = mapped_column(
+        "threadId",
+        Text,
+        ForeignKey(
+            "AIChatThread.id",
+            name="AIChatMessage_threadId_fkey",
+            ondelete="CASCADE",
+            onupdate="CASCADE",
+        ),
+    )
+    position: Mapped[int] = mapped_column(Integer)
+    role: Mapped[str] = mapped_column(Text)
+    content: Mapped[str] = mapped_column(Text)
+    reasoning: Mapped[str | None] = mapped_column(Text)
+
+    thread: Mapped[AIChatThread] = relationship(back_populates="messages")
 
 
 class WordBookRecord(TimestampMixin, Base):

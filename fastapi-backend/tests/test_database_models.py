@@ -16,6 +16,8 @@ EXPECTED_TABLES = {
     "TrackEvent",
     "PerformanceEntry",
     "ErrorEntry",
+    "AIChatThread",
+    "AIChatMessage",
 }
 
 EXPECTED_COLUMNS = {
@@ -136,6 +138,17 @@ EXPECTED_COLUMNS = {
         "createdAt",
         "updatedAt",
     },
+    "AIChatThread": {"id", "userId", "role", "createdAt", "updatedAt"},
+    "AIChatMessage": {
+        "id",
+        "threadId",
+        "position",
+        "role",
+        "content",
+        "reasoning",
+        "createdAt",
+        "updatedAt",
+    },
 }
 
 EXPECTED_NULLABLE_COLUMNS = {
@@ -170,6 +183,8 @@ EXPECTED_NULLABLE_COLUMNS = {
     "TrackEvent": {"payload", "url"},
     "PerformanceEntry": {"fp", "fcp", "lcp", "inp", "cls"},
     "ErrorEntry": {"message", "stack", "url"},
+    "AIChatThread": set(),
+    "AIChatMessage": {"reasoning"},
 }
 
 
@@ -255,6 +270,11 @@ def test_metadata_preserves_index_names_and_uniqueness() -> None:
             "ErrorEntry_visitorId_createdAt_idx": False,
             "ErrorEntry_error_createdAt_idx": False,
         },
+        "AIChatThread": {"AIChatThread_userId_role_key": True},
+        "AIChatMessage": {
+            "AIChatMessage_threadId_position_key": True,
+            "AIChatMessage_threadId_createdAt_idx": False,
+        },
     }
     for table_name, indexes in expected.items():
         actual = {index.name: index.unique for index in Base.metadata.tables[table_name].indexes}
@@ -267,7 +287,7 @@ def test_all_foreign_keys_keep_cascade_semantics() -> None:
         for table in Base.metadata.tables.values()
         for foreign_key in table.foreign_key_constraints
     ]
-    assert len(foreign_keys) == 11
+    assert len(foreign_keys) == 13
     actual = {
         (
             foreign_key.name,
@@ -299,6 +319,13 @@ def test_all_foreign_keys_keep_cascade_semantics() -> None:
             ("Visitor.id",),
         ),
         ("ErrorEntry_visitorId_fkey", "ErrorEntry", ("visitorId",), ("Visitor.id",)),
+        ("AIChatThread_userId_fkey", "AIChatThread", ("userId",), ("User.id",)),
+        (
+            "AIChatMessage_threadId_fkey",
+            "AIChatMessage",
+            ("threadId",),
+            ("AIChatThread.id",),
+        ),
     }
     for foreign_key in foreign_keys:
         assert foreign_key.ondelete == "CASCADE"
@@ -313,7 +340,7 @@ def test_relationships_have_explicit_delete_orphan_cascade() -> None:
         for relationship in mapper.relationships
         if relationship.uselist
     ]
-    assert len(collection_relationships) == 11
+    assert len(collection_relationships) == 13
     for relationship in collection_relationships:
         assert relationship.passive_deletes is True
     without_delete_orphan = {

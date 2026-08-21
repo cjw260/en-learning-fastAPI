@@ -20,19 +20,25 @@ APPLICATION_TABLES = {
     "TrackEvent",
     "PerformanceEntry",
     "ErrorEntry",
+    "AIChatThread",
+    "AIChatMessage",
 }
 
 
 def run_alembic(database_url: str, *arguments: str) -> subprocess.CompletedProcess[str]:
     executable = Path(sys.executable).with_name("alembic")
-    return subprocess.run(
+    result = subprocess.run(
         [str(executable), *arguments],
         cwd=PROJECT_ROOT,
         env={**os.environ, "DATABASE_URL": database_url},
-        check=True,
+        check=False,
         capture_output=True,
         text=True,
     )
+    assert result.returncode == 0, (
+        f"alembic {' '.join(arguments)} failed\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    )
+    return result
 
 
 async def inspect_database(database_url: str) -> tuple[set[str], list[str], tuple[int, int], str]:
