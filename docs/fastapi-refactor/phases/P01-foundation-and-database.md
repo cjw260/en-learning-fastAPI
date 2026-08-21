@@ -1,6 +1,6 @@
 # P01：FastAPI 工程骨架与数据库基础
 
-状态：`NOT_STARTED`
+状态：`COMPLETED`
 
 ## 启动条件
 
@@ -30,14 +30,14 @@
 
 ## 验收标准
 
-- [ ] 三类进程独立启动、停止和资源释放通过。
-- [ ] live/ready 在依赖正常和异常时语义正确。
-- [ ] 统一响应和验证错误有自动化契约测试。
-- [ ] Alembic upgrade → downgrade → upgrade 通过。
-- [ ] ORM 与批准 schema 的约束、索引、精度和关系一致。
-- [ ] 缺失配置不泄露秘密，日志含 request ID 且无敏感值。
-- [ ] pytest、lint、format check、type-check 全部通过。
-- [ ] 无 P02 数据导入、P03 AI 或 P04+ 业务实现。
+- [x] 三类进程独立启动、停止和资源释放通过。
+- [x] live/ready 在依赖正常和异常时语义正确。
+- [x] 统一响应和验证错误有自动化契约测试。
+- [x] Alembic upgrade → downgrade → upgrade 通过。
+- [x] ORM 与批准 schema 的约束、索引、精度和关系一致。
+- [x] 缺失配置不泄露秘密，日志含 request ID 且无敏感值。
+- [x] pytest、lint、format check、type-check 全部通过。
+- [x] 无 P02 数据导入、P03 AI 或 P04+ 业务实现。
 
 ## 回退
 

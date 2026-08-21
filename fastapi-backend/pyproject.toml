@@ -1,0 +1,62 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "en-learning-backend"
+version = "0.1.0"
+description = "FastAPI backend for en-learning"
+readme = "README.md"
+requires-python = "==3.12.*"
+dependencies = [
+  "alembic==1.19.1",
+  "asyncpg==0.31.0",
+  "fastapi==0.141.1",
+  "httpx==0.28.1",
+  "minio==7.2.20",
+  "pydantic==2.13.4",
+  "pydantic-settings==2.15.0",
+  "redis==8.1.0",
+  "sqlalchemy[asyncio]==2.0.52",
+  "taskiq==0.12.4",
+  "taskiq-redis==1.2.3",
+  "urllib3==2.5.0",
+  "uvicorn==0.52.4",
+]
+
+[dependency-groups]
+dev = [
+  "mypy==2.3.1",
+  "pytest==9.1.1",
+  "pytest-asyncio==1.4.0",
+  "ruff==0.16.4",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/en_learning"]
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-config --strict-markers"
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC", "RUF", "PT"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["en_learning"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+packages = ["en_learning"]
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["minio.*", "taskiq_redis.*"]
+ignore_missing_imports = true
