@@ -6,15 +6,15 @@
 
 | 字段 | 值 |
 |---|---|
-| Active phase | `P05`：支付、Socket.IO 与后台任务 |
-| Phase status | `IN_PROGRESS` |
-| Phase lock | `P05 ONLY`（不得在本次执行中启动 P06） |
-| Allowed scope | 支付创建/回调/状态查询、可靠 outbox、Socket.IO JWT/Redis、摘要 worker/调度/补偿、直接相关前端握手与测试文档 |
-| Forbidden scope | P06 全链路前端适配、性能容量定案、P07 生产部署/Nginx/systemd/切流与旧服务处置 |
+| Active phase | `NONE`（P05 已完成，等待用户在新执行中启动 P06） |
+| Phase status | `COMPLETED` |
+| Phase lock | `CLOSED`（不得在本次执行中启动 P06） |
+| Allowed scope | 仅记录 P05 完成状态 |
+| Forbidden scope | P06 全链路前端适配与容量定案、P07 生产部署/Nginx/systemd/切流与旧服务处置 |
 | Required skill | `en-learning-backend-refactor` |
 | Skill status | `LOADED` |
 | Skill loaded at | 2026-08-21（P05 当前执行重新加载） |
-| Next phase | `P06`，仅在 P05 完成、推送且用户于新执行明确启动后允许 |
+| Next phase | `P06`，仅由用户在新的执行中明确启动并重新通过 skill 门禁 |
 
 ## 阶段状态
 
@@ -25,7 +25,7 @@
 | P02 数据初始化 | `COMPLETED` | `8c5bf25` | 主提交已推送到 `origin/codex/p02-data-bootstrap` |
 | P03 AI 服务 | `COMPLETED` | `fc0e503` | 主提交已推送到 `origin/codex/p03-ai-service` |
 | P04 核心业务 API | `COMPLETED` | `b51f41b` | 主提交已推送到 `origin/codex/p04-core-api` |
-| P05 支付/Socket.IO/worker | `IN_PROGRESS` | — | 当前执行已授权并通过启动门禁 |
+| P05 支付/Socket.IO/worker | `COMPLETED` | `d9ed248` | 主提交已推送到 `origin/codex/p05-payment-socket-worker` |
 | P06 前端与全链路验收 | `NOT_STARTED` | — | — |
 | P07 灰度上线与清理 | `NOT_STARTED` | — | — |
 
@@ -217,11 +217,38 @@
 
 ## 当前阻塞
 
-无 P05 阻塞。实现、自动化、双进程 Socket.IO、故障注入、前端构建以及 staged diff/敏感信息/范围审查均通过；主提交与完成记录推送待执行。
+无 P05 阻塞。实现、自动化、双进程 Socket.IO、故障注入、前端构建、staged diff/敏感信息审查和主提交推送均通过。
 
 ## 准确下一动作
 
-提交并推送 P05 主实现；随后将权威状态标记为 `COMPLETED`，提交并推送完成记录后结束本次执行，不启动 P06。
+结束本次执行，不启动 P06。用户在新的执行中明确启动 P06 后，必须重新加载 `en-learning-backend-refactor`，读取根 `AGENTS.md`、本文件和 P06 阶段文件，再建立新的阶段锁。
+
+## P05 已完成动作
+
+1. 支付创建保持旧 Vue 请求/响应形状，但用户只取 JWT，课程标题、说明和金额只取数据库；用户行锁阻止并发重复待支付订单。
+2. 自建最小 RSA2 适配层，对支付宝原始非空参数排序签名/验签；回调校验 app、seller、订单、金额、tradeNo、课程事实和受控状态机。
+3. 在同一 PostgreSQL 事务内更新支付、课程权益与唯一 durable job；并发/重复/乱序通知不会重复授予权益或创建事件。
+4. 新增当前 JWT 用户隔离的支付状态查询；即时 Redis/Taskiq 入队失败不会回滚支付事实，可经查询与恢复扫描最终一致。
+5. 使用 `python-socketio` 提供 `/socket.io`，由 access token 决定 `user_{id}` 房间；旧 query userId 只能与签名身份一致，事件名/载荷保持 `paymentSuccess`/userId。
+6. Redis manager 支持多 Uvicorn 和 worker 跨进程广播；真实双实例、多连接、其他用户隔离、拒绝裸 userId 和重连测试通过。
+7. 新增 `BackgroundJob` 行锁/租约状态机、超时、指数退避、最大尝试、错误码、每分钟自动恢复和显式 `en-learning-worker-replay` 补偿入口。
+8. 每日摘要以 Redis NX 扫描锁和 `date+user` 唯一键调度；SMTP 放入线程、TLS/SSL 可配置、Message-ID 稳定，重启/重复投递/SMTP 故障测试通过。
+9. 前端 Socket.IO 握手增加 access token；P05 契约、配置模板、运行/恢复说明及 P06 边界均已记录，未实施生产部署或 P06 全链路适配。
+10. 最终 `81 passed`；uv 锁文件离线检查、Ruff format/lint、mypy、Vue type-check/build、staged diff、敏感信息和范围检查全部通过。
+
+## P05 阶段结束记录
+
+```text
+Completed at: 2026-08-21 17:02 CST
+Review result: PASS；兼容、验签、可信事实、事务、幂等、状态机、Socket 身份/多进程、worker 恢复、邮件故障、资源释放、日志秘密、测试覆盖和 P05 范围无剩余阻塞问题
+Verification commands: UV_CACHE_DIR=/private/tmp/en-learning-uv-cache uv lock --check --offline；ruff format --check；ruff check；mypy src；pytest -q（81 passed，含 Alembic 往返/check、真实 PostgreSQL/Redis/MinIO、双 Uvicorn Socket.IO）；pnpm --filter @en/web type-check；pnpm --filter @en/web build-only；git diff --cached --check；敏感/范围扫描
+Commit: d9ed248 (P05 主提交)
+Branch: codex/p05-payment-socket-worker
+Remote: origin -> https://github.com/cjw260/en-learning-fastAPI.git
+Push result: PASS；P05 主提交已推送，完成记录随当前提交推送
+Remaining non-blocking risks: 确定性测试使用生成的 RSA 密钥和假 SMTP，未接触真实支付宝/邮箱凭证、配额或生产网络；SMTP 在服务端已接收但客户端超时的模糊失败下仍可能重复投递，稳定 Message-ID 可供接收方去重。P06 仍需增加支付弹窗主动状态确认、refresh 后 Socket auth 更新和完整浏览器 E2E。生产数据库迁移、真实支付、Nginx/systemd、双服务切换和部署均未触碰
+Next phase start condition: 用户在新执行中明确启动 P06，并重新加载必需 skill
+```
 
 ## P04 已完成动作
 

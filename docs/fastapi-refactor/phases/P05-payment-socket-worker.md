@@ -1,6 +1,6 @@
 # P05：支付、Socket.IO 与后台任务
 
-状态：`IN_PROGRESS`
+状态：`COMPLETED`
 
 ## 启动条件
 
