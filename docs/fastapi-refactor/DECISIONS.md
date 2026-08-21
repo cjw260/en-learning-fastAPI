@@ -99,3 +99,12 @@
 - 状态：已确认
 - 决策：P01 初始迁移可对空 PostgreSQL 完整建表/降级/再升级；应用启动绝不自动执行迁移。
 - 生产约束：现有生产库在 P07 前不得直接运行该初始迁移。P07 必须先比对实际 schema 与 P01 metadata，再通过受控 `stamp`/基线流程接管迁移历史，避免 Alembic 与 Prisma 同时创建既有对象。
+
+## D016：P02 固定 ECDICT 1.0.28 基础 CSV
+
+- 状态：已确认
+- 决策：开发 WordBook 使用 `skywind3000/ECDICT` 标签 `1.0.28`、提交 `8defb761f7c7ad1818ca94290a1844d7b33d6b23` 下的 `ecdict.csv` 基础版（65,936,699 bytes，770,611 条记录）。
+- 完整性：源文件 SHA-256 为 `d0ce61e560b50d9905d20de3173aa3ca80950ce235bedd21c53e025cf9f38cb0`；运行前必须同时验证大小和 SHA-256，禁止接受同名但内容变化的文件。
+- 许可证：固定提交使用 MIT License，Copyright (c) 2017 Linwei；项目保留 `resources/ECDICT-LICENSE.txt` 和来源清单。
+- 映射：保留对外 `frq` 字符串，新增内部 nullable `frqRank`；只有正整数进入 rank，null/空/非数值/0 统一为 null 并按 `frqRank, word, id` 稳定排序。`detail`、`audio` 当前模型无对应字段，P02 明确校验但不导入。
+- 幂等：WordBook 以 `word`、Course 以 `value` 建立唯一键；ID 从自然键确定性生成。词库每 1,000 条独立事务提交，失败报告已提交批次数，重跑从头 upsert 即可恢复。

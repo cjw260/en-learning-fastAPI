@@ -165,9 +165,10 @@ class WordBook(TimestampMixin, Base):
     __tablename__ = "WordBook"
     __table_args__ = (
         PrimaryKeyConstraint("id", name="WordBook_pkey"),
-        Index("WordBook_word_idx", "word"),
+        Index("WordBook_word_key", "word", unique=True),
         Index("WordBook_tag_idx", "tag"),
         Index("WordBook_word_tag_idx", "word", "tag"),
+        Index("WordBook_frqRank_word_id_idx", "frqRank", "word", "id"),
     )
 
     id: Mapped[str] = mapped_column(Text)
@@ -181,6 +182,7 @@ class WordBook(TimestampMixin, Base):
     tag: Mapped[str | None] = mapped_column(Text)
     bnc: Mapped[str | None] = mapped_column(Text)
     frq: Mapped[str | None] = mapped_column(Text)
+    frq_rank: Mapped[int | None] = mapped_column("frqRank", Integer)
     exchange: Mapped[str | None] = mapped_column(Text)
     gk: Mapped[bool | None] = mapped_column(Boolean)
     zk: Mapped[bool | None] = mapped_column(Boolean)
@@ -290,7 +292,10 @@ class CourseRecord(TimestampMixin, Base):
 
 class Course(TimestampMixin, Base):
     __tablename__ = "Course"
-    __table_args__ = (PrimaryKeyConstraint("id", name="Course_pkey"),)
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name="Course_pkey"),
+        Index("Course_value_key", "value", unique=True),
+    )
 
     id: Mapped[str] = mapped_column(Text)
     name: Mapped[str] = mapped_column(Text)

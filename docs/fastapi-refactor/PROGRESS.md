@@ -6,15 +6,15 @@
 
 | 字段 | 值 |
 |---|---|
-| Active phase | `NONE`（P01 已完成，等待用户在新执行中启动 P02） |
-| Phase status | `COMPLETED` |
-| Phase lock | `CLOSED`（不得在本次执行中启动 P02） |
-| Allowed scope | 仅记录 P01 完成状态 |
-| Forbidden scope | P02-P07 的编码、数据初始化、业务迁移和生产部署 |
+| Active phase | `P02`：开发数据初始化 |
+| Phase status | `IN_PROGRESS` |
+| Phase lock | `P02 ONLY` |
+| Allowed scope | ECDICT 导入、课程 seed、MinIO 图片、初始化编排/报告及其迁移、测试和文档 |
+| Forbidden scope | P03-P07 的 API/业务迁移、认证、支付、实时通信、生产部署和切流 |
 | Required skill | `en-learning-backend-refactor` |
 | Skill status | `LOADED` |
-| Skill loaded at | 2026-08-21 13:41 CST（P01 依赖安装后续作重新加载） |
-| Next phase | `P02`，必须由用户在新的执行中明确启动 |
+| Skill loaded at | 2026-08-21 13:58 CST（P02 新执行重新加载） |
+| Next phase | `P03`，仅在 P02 完成并由用户在新执行中明确启动 |
 
 ## 阶段状态
 
@@ -22,12 +22,42 @@
 |---|---|---|---|
 | P00 仓库、计划与基线 | `COMPLETED` | `984d60e` | 主提交已推送到新 origin 的阶段分支 |
 | P01 工程骨架与数据库基础 | `COMPLETED` | `bb0a24b` | 主提交已推送到 `origin/codex/p01-fastapi-foundation` |
-| P02 数据初始化 | `NOT_STARTED` | — | — |
+| P02 数据初始化 | `IN_PROGRESS` | — | 用户已明确启动；阶段锁已建立 |
 | P03 AI 服务 | `NOT_STARTED` | — | — |
 | P04 核心业务 API | `NOT_STARTED` | — | — |
 | P05 支付/Socket.IO/worker | `NOT_STARTED` | — | — |
 | P06 前端与全链路验收 | `NOT_STARTED` | — | — |
 | P07 灰度上线与清理 | `NOT_STARTED` | — | — |
+
+## P02 启动基线
+
+| 检查 | 证据 | 状态 |
+|---|---|---|
+| 用户授权 | 用户在 2026-08-21 新执行中明确要求进行下一阶段 | PASS |
+| 必需 skill | 本次完整读取 `en-learning-backend-refactor` | PASS |
+| 仓库标识 | 根目录与四项标识全部存在 | PASS |
+| P01 前置条件 | `bb0a24b` 主提交与 `cf15548` 完成记录已推送 | PASS |
+| 启动分支 | 从已完成 P01 创建 `codex/p02-data-bootstrap` | PASS |
+| 启动工作区 | 仅 `.agents/`、`.codex/` 为既有未跟踪内容，继续保护且不提交 | PASS |
+| 旧系统基线 | 已重读 Prisma `WordBook`/`Course`、`seed.ts`、八张 PNG、MinIO 规则和前端字段 | PASS |
+| 技术映射 | 已重读 `framework-parity.md` 的数据、事务、异步文件/MinIO 条目 | PASS |
+| 视觉门禁 | N/A（纯后端）；以单命令、数据约束、对象 HEAD、报告和失败契约验收 | N/A |
+| 固定来源 | ECDICT `1.0.28` / `8defb761...` / 65,936,699 bytes / SHA-256 `d0ce61e5...` / MIT | PASS |
+
+## P02 验收清单
+
+| 标准 | 验证方法 | 当前证据 | 状态 |
+|---|---|---|---|
+| 本次只执行 P02 | 阶段锁、路由/模块与 diff 范围检查 | 仅数据迁移、bootstrap、测试、来源/许可和 P02 文档；无 P03+ API/业务/部署 | PASS |
+| 空库一条命令初始化 | 临时 PostgreSQL/MinIO 调用 CLI | `en-learning-bootstrap` 完成 migrate → 770,611 词 → 8 课程 → 8 图片 → verify/report | PASS |
+| 来源、许可和校验可追溯 | 固定清单、运行前大小/SHA 校验、许可文件测试 | tag/commit/URL/65,936,699 bytes/SHA-256/MIT 全部记录并自动核对 | PASS |
+| 连续两次幂等 | 同一隔离环境连续执行两次完整 CLI | 第二次 770,611 词、8 课程、8 对象全部 skip；总量不变 | PASS |
+| 字段、坏行、批次恢复 | 规范化、拒绝 JSONL、故障注入和重跑集成测试 | BOM/空值/tag/frq/坏行覆盖；第二批失败保留第一批，重跑恢复 | PASS |
+| 八课程/八图片完整 | Prisma seed 对照、MinIO stat 与匿名 HEAD | `gk/zk/gre/toefl/ielts/cet6/cet4/ky` 均为 `image/png`、公开 200 | PASS |
+| `frq` 稳定排序 | 边界数据 PostgreSQL 查询测试 | 正整数数值升序；null/空/非数值/0 的 rank 为 null，按 word/id 稳定置后 | PASS |
+| 不伪造业务数据 | 运行前后保护表计数比较 | 用户、学习、支付、课程记录、访客及四类埋点两次均保持 0 | PASS |
+| 失败非零且报告准确 | CLI 故障注入、秘密扫描、生产保护测试 | 失败返回 1、status=failed、无凭证；生产环境在迁移前拒绝 | PASS |
+| 自动化与质量门禁 | pytest、Ruff、mypy、uv lock、Alembic check | `40 passed`；Ruff format/lint、mypy、uv lock、Alembic 往返/check、CLI 入口均通过 | PASS |
 
 ## P00 启动基线
 
@@ -104,11 +134,24 @@
 
 ## 当前阻塞
 
-无 P01 阻塞。用户已手动补充 `greenlet 3.5.5`；P01 全部自动化验收和最终自审通过，主提交 `bb0a24b` 已安全推送到新 `origin`。
+无 P02 阻塞。实现、两次全量 ECDICT 空库验收、最终 diff/安全审查和完整复测均通过；等待安全提交并推送。
 
 ## 准确下一动作
 
-结束本次执行，不启动 P02。用户在新的执行中明确启动 P02 后，必须重新加载 `en-learning-backend-refactor`，读取根 `AGENTS.md`、本文件和 P02 阶段文件，再建立新的阶段锁。
+只暂存 P02 文件并再次检查暂存 diff/敏感信息，创建 P02 主提交并推送 `origin/codex/p02-data-bootstrap`。推送成功后更新完成记录并再次推送；不得启动 P03。
+
+## P02 已完成动作
+
+1. 固定 ECDICT 1.0.28 的 tag、完整 commit、下载 URL、文件大小、SHA-256 和 MIT 许可归属。
+2. 新增 `WordBook.word`、`Course.value` 唯一键和内部 `frqRank`，保留外部 `frq` 字符串兼容。
+3. 实现 UTF-8/BOM CSV 流式读取、字段规范化、考试标签映射、拒绝 JSONL 和每 1,000 条事务 upsert。
+4. 以确定性 ID 和自然键 upsert 八门旧课程，保持名称、文案、教师、价格与 `/course/{value}.png`。
+5. 创建/检查 `course` bucket、公开只读策略、PNG SHA metadata、稳定对象键与公开 HEAD/MIME 验证。
+6. 提供生产禁用的 `en-learning-bootstrap`，串联固定源校验、Alembic、数据、对象、保护表验证与无秘密 JSON 报告。
+7. 覆盖坏行、排序边界、批次故障恢复、连续两次幂等、真实 PostgreSQL/MinIO、失败非零与生产保护。
+8. 修复同进程 Alembic `fileConfig` 会禁用既有应用 logger 的副作用。
+9. 使用完整官方 CSV 在隔离空环境连续执行两次：第一次 770,611 插入，第二次 770,611 skip，0 拒绝。
+10. 完成兼容、安全、迁移、事务、异步阻塞、资源释放、幂等、错误/报告、秘密和测试覆盖自审；修正生产拒绝时机、下载字节上限、关闭兜底和对象 metadata/长度复核后完成复测。
 
 ## P01 已完成动作
 
