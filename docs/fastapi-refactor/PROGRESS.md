@@ -6,15 +6,15 @@
 
 | 字段 | 值 |
 |---|---|
-| Active phase | `P04`：核心业务 API 迁移 |
-| Phase status | `IN_PROGRESS` |
-| Phase lock | `P04 ONLY`（不得在本次执行中启动 P05） |
-| Allowed scope | 用户、头像、课程、词库、学习、UV/PV/event/performance/error 埋点及其契约/测试/文档 |
+| Active phase | `NONE`（P04 已完成，等待用户在新执行中启动 P05） |
+| Phase status | `COMPLETED` |
+| Phase lock | `CLOSED`（不得在本次执行中启动 P05） |
+| Allowed scope | 仅记录 P04 完成状态 |
 | Forbidden scope | P05-P07 的支付、Socket.IO、worker、全链路适配、生产部署和切流 |
 | Required skill | `en-learning-backend-refactor` |
 | Skill status | `LOADED` |
 | Skill loaded at | 2026-08-21（P04 当前执行重新加载） |
-| Next phase | `P05`，仅在 P04 完成并由用户在新的执行中明确启动后允许 |
+| Next phase | `P05`，仅由用户在新的执行中明确启动并重新通过 skill 门禁 |
 
 ## 阶段状态
 
@@ -24,7 +24,7 @@
 | P01 工程骨架与数据库基础 | `COMPLETED` | `bb0a24b` | 主提交已推送到 `origin/codex/p01-fastapi-foundation` |
 | P02 数据初始化 | `COMPLETED` | `8c5bf25` | 主提交已推送到 `origin/codex/p02-data-bootstrap` |
 | P03 AI 服务 | `COMPLETED` | `fc0e503` | 主提交已推送到 `origin/codex/p03-ai-service` |
-| P04 核心业务 API | `IN_PROGRESS` | — | 当前唯一执行阶段 |
+| P04 核心业务 API | `COMPLETED` | `b51f41b` | 主提交已推送到 `origin/codex/p04-core-api` |
 | P05 支付/Socket.IO/worker | `NOT_STARTED` | — | — |
 | P06 前端与全链路验收 | `NOT_STARTED` | — | — |
 | P07 灰度上线与清理 | `NOT_STARTED` | — | — |
@@ -46,15 +46,15 @@
 
 | 标准 | 验证方法 | 当前证据 | 状态 |
 |---|---|---|---|
-| 本次只执行 P04 | 阶段锁、OpenAPI/模块与最终 diff 范围检查 | 已锁定 P04；禁止支付、Socket.IO、worker、部署和切流 | IN PROGRESS |
-| 全部既有 Core 非支付路由契约 | NestJS/前端清单、HTTP/OpenAPI 与自动化夹具 | 待盘点并实现 | PENDING |
-| envelope、状态码及序列化兼容 | 成功/错误、date/Decimal/null 契约测试 | 待实现 | PENDING |
-| 密码与 JWT 安全 | 哈希、access/refresh、过期/伪造/越权测试 | 待实现 | PENDING |
-| 头像上传安全 | 认证、内容/MIME/大小/对象覆盖/失败清理测试 | 待实现 | PENDING |
-| WordBook 查询正确 | 过滤、分页、ECDICT 标签与稳定 `frq` 排序测试 | 待实现 | PENDING |
-| 学习事务与并发正确 | 购买权、重复/并发掌握、wordNumber 测试 | 待实现 | PENDING |
-| 埋点边界与隐私 | schema、超大载荷、速率、依赖错误、日志秘密测试 | 待实现 | PENDING |
-| 未实现 P05+ | 范围扫描和最终 diff 审查 | 待最终验证 | PENDING |
+| 本次只执行 P04 | 阶段锁、OpenAPI/模块与最终 diff 范围检查 | 仅用户/头像/课程/词库/学习/tracker、迁移、测试和文档；无 P05+ 路由或运行时 | PASS |
+| 全部既有 Core 非支付路由契约 | NestJS/前端清单、HTTP/OpenAPI 与自动化夹具 | 16 条既有非支付路由逐项清单、OpenAPI 与成功/失败集成测试通过 | PASS |
+| envelope、状态码及序列化兼容 | 成功/错误、date/Decimal/null 契约测试 | 统一 envelope、真实 4xx/5xx、UTC Z、两位价格、null 及前端实际载荷通过 | PASS |
+| 密码与 JWT 安全 | 哈希、access/refresh、过期/伪造/越权测试 | versioned scrypt、旧值升级、token 类型/过期/签名、refresh 行锁轮换与重放测试通过 | PASS |
+| 头像上传安全 | 认证、内容/MIME/大小/对象覆盖/失败清理测试 | Bearer、PNG/JPEG/WebP magic/后缀、5 MiB、随机用户对象键、清理及真实 MinIO 浏览器上传通过 | PASS |
+| WordBook 查询正确 | 过滤、分页、ECDICT 标签与稳定 `frq` 排序测试 | 八标签、空搜索兼容、分页和 `frqRank → word → id` 稳定顺序自动化/浏览器通过 | PASS |
+| 学习事务与并发正确 | 购买权、重复/并发掌握、wordNumber 测试 | 支付成功课程权限、课程词归属、PostgreSQL upsert、重复/并发计数及浏览器 10 词流程通过 | PASS |
+| 埋点边界与隐私 | schema、超大载荷、速率、依赖错误、日志秘密测试 | 64 KiB、Redis 限速、访客防重绑、敏感 key/text/URL 清洗和依赖故障测试通过 | PASS |
+| 未实现 P05+ | 范围扫描和最终 diff 审查 | 支付创建/回调、Socket.IO、worker、Nginx/生产部署均未实现 | PASS |
 
 ## P03 启动基线
 
@@ -188,11 +188,38 @@
 
 ## 当前阻塞
 
-无 P03 阻塞。实现、实际浏览器验收、最终自动化/前端构建、staged diff/敏感信息审查和主提交推送均通过。
+无 P04 阻塞。实现、实际浏览器验收、最终自动化/前端构建、staged diff/敏感信息审查和主提交推送均通过。
 
 ## 准确下一动作
 
-结束本次执行，不启动 P04。用户在新的执行中明确启动 P04 后，必须重新加载 `en-learning-backend-refactor`，读取根 `AGENTS.md`、本文件和 P04 阶段文件，再建立新的阶段锁。
+结束本次执行，不启动 P05。用户在新的执行中明确启动 P05 后，必须重新加载 `en-learning-backend-refactor`，读取根 `AGENTS.md`、本文件和 P05 阶段文件，再建立新的阶段锁。
+
+## P04 已完成动作
+
+1. 迁移 16 条既有非支付 Core API，保持 `/api/v1`、主要请求字段、成功 envelope、课程/单词/用户返回形状和旧前端调用路径。
+2. 新注册值使用随机盐 versioned scrypt；旧明文/前端 MD5 值首次登录后升级；access/refresh 类型、过期、签名和 refresh version 轮换受控。
+3. 头像上传改为 Bearer 当前用户，校验 multipart 单文件、大小、MIME/扩展名/magic，并使用 `users/{jwt-user}/{uuid}.{ext}` 对象键和失败清理。
+4. 课程与 WordBook 保持 Decimal/null/date 兼容，使用内部 `frqRank`、word、id 稳定排序；浏览器发现并修复 `word=` 空查询兼容。
+5. 学习接口校验支付成功课程与单词归属，以 PostgreSQL upsert 和原子增量保证重复/并发掌握不重复计数。
+6. 六类 tracker 路由增加 64 KiB body 限制、Redis 固定窗口限速、访客防重绑、JWT 身份匹配、敏感 key/text/URL 清洗和通用依赖错误。
+7. 浏览器发现并修复资料页会展开完整登录响应的旧运行时载荷；更新 DTO 仅忽略额外只读字段，所有可写字段仍由白名单和 JWT 当前用户决定。
+8. 新增可逆 `refreshTokenVersion` 迁移、P04 路由契约清单、真实 PostgreSQL/Redis/MinIO 集成测试、上传/事务/并发/故障/隐私测试和本地浏览器 seed。
+9. 实际内置浏览器完成注册、登录、refresh、八课程、已购课程、15 词检索分页、10 词学习/掌握计数、头像上传和资料保存；修复后空搜索与完整资料载荷均复验 200。
+10. 最终 `71 passed`；uv lock、Ruff format/lint、mypy、前端 type-check/build、diff/sensitive/scope 检查通过；所有本地临时服务和端口已清理。
+
+## P04 阶段结束记录
+
+```text
+Completed at: 2026-08-21 16:02 CST
+Review result: PASS；兼容、认证、密码、上传、事务、并发、限速、隐私、依赖故障、浏览器体验、测试覆盖和 P04 范围无剩余阻塞问题
+Verification commands: uv lock --check --offline；ruff format --check；ruff check；mypy src；pytest -q（71 passed）；pnpm --filter @en/web type-check；pnpm --filter @en/web build-only；实际浏览器注册/登录/refresh/课程/词库/学习/上传/资料；git diff --cached --check；敏感/范围扫描
+Commit: b51f41b (P04 主提交)
+Branch: codex/p04-core-api
+Remote: origin -> https://github.com/cjw260/en-learning-fastAPI.git
+Push result: PASS；P04 主提交已推送，完成记录随当前提交推送
+Remaining non-blocking risks: `tracker/update-uv` 现按安全决策要求 Bearer，但旧 tracker SDK 尚不携带 token，登录后该绑定请求会返回预期 401；P06 必须补 token 并统一前端 4xx/5xx 错误展示。前端构建仍有既有 package type/plugin timing/大 chunk 警告，不影响 P04。真实生产凭证、生产数据、Nginx 切流和部署均未触碰
+Next phase start condition: 用户在新执行中明确启动 P05，并重新加载必需 skill
+```
 
 ## P03 已完成动作
 
