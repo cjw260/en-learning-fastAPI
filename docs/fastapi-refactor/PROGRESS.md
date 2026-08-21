@@ -6,22 +6,22 @@
 
 | 字段 | 值 |
 |---|---|
-| Active phase | `NONE`（P00 已完成，等待用户在新执行中启动 P01） |
-| Phase status | `COMPLETED` |
-| Phase lock | `CLOSED`（不得在本次执行中启动 P01） |
-| Allowed scope | 仅记录 P00 完成状态 |
-| Forbidden scope | P01-P07 的编码、依赖安装、数据库操作、业务迁移、生产部署 |
+| Active phase | `P01`：FastAPI 工程骨架与数据库基础 |
+| Phase status | `IN_PROGRESS` |
+| Phase lock | `LOCKED`（本次只允许执行 P01） |
+| Allowed scope | `fastapi-backend/` 工程与测试、P01 文档/决策/进度、权威计划状态 |
+| Forbidden scope | P02 数据导入、P03+ 业务迁移、NestJS 业务改动、生产部署 |
 | Required skill | `en-learning-backend-refactor` |
 | Skill status | `LOADED` |
-| Skill loaded at | 2026-08-21 当前任务 |
-| Next phase | `P01`，不得在本次执行中启动 |
+| Skill loaded at | 2026-08-21 13:41 CST（P01 依赖安装后续作重新加载） |
+| Next phase | `P02`，即使 P01 完成也不得在本次执行中启动 |
 
 ## 阶段状态
 
 | 阶段 | 状态 | 完成提交 | 备注 |
 |---|---|---|---|
 | P00 仓库、计划与基线 | `COMPLETED` | `984d60e` | 主提交已推送到新 origin 的阶段分支 |
-| P01 工程骨架与数据库基础 | `NOT_STARTED` | — | 等待新执行与用户授权 |
+| P01 工程骨架与数据库基础 | `IN_PROGRESS` | — | 当前唯一执行阶段 |
 | P02 数据初始化 | `NOT_STARTED` | — | — |
 | P03 AI 服务 | `NOT_STARTED` | — | — |
 | P04 核心业务 API | `NOT_STARTED` | — | — |
@@ -43,6 +43,35 @@
 | 旧系统测试 | 无测试文件、无 CI | RECORDED GAP |
 | 本地旧系统构建 | `nest` 命令不存在，因为工作区依赖未安装 | RECORDED GAP |
 | 本地数据库 | 没有业务数据，不运行生产数据导出/复制 | EXPECTED |
+
+## P01 启动基线
+
+| 检查 | 证据 | 状态 |
+|---|---|---|
+| 用户授权 | 用户在 2026-08-21 新执行中明确要求进行下一个阶段 | PASS |
+| 必需 skill | 本次完整读取 `en-learning-backend-refactor` | PASS |
+| 仓库标识 | 四项标识全部存在 | PASS |
+| P00 前置条件 | 完成提交 `984d60e` 与记录提交 `3dfb9af` 已推送 | PASS |
+| 启动分支 | 从 `3dfb9af` 创建 `codex/p01-fastapi-foundation` | PASS |
+| 启动工作区 | 仅 `.agents/`、`.codex/` 为既有未跟踪内容，继续保护且不提交 | PASS |
+| 旧系统基线 | 已重读双入口、响应拦截器/异常过滤器、Prisma schema、Redis/BullMQ 与 MinIO 生命周期 | PASS |
+| 技术映射 | 已重读 `framework-parity.md` | PASS |
+| 视觉门禁 | N/A（纯后端）；以路径、schema、状态码、错误 envelope、OpenAPI 与模块边界验收 | N/A |
+| 本地工具链 | 用户手动安装并核验 Python 3.12.14、uv 0.12.5、PostgreSQL 17.11、Redis 8.10.1 | PASS |
+
+## P01 验收清单
+
+| 标准 | 验证方法 | 当前证据 | 状态 |
+|---|---|---|---|
+| 本次只执行 P01 | diff 与路由/模块清单检查 | 仅 `fastapi-backend/` 和 P01 计划/决策/进度文件；无 P02+ 路由、导入或业务实现 | PASS |
+| 三类进程启动/停止/资源释放 | 子进程信号测试与生命周期替身 | Core API、AI API、Taskiq worker 均独立启动并完成信号关闭；worker 创建 Redis Stream 消费组；无资源关闭错误 | PASS |
+| live/ready 正常与异常语义 | HTTP 契约测试、依赖故障替身 | 正常/故障/超时契约测试通过 | PASS |
+| 统一响应与验证错误 | FastAPI HTTP 契约测试 | 成功、404、422、500、request ID 与路径契约通过 | PASS |
+| Alembic 往返 | 临时 PostgreSQL upgrade → downgrade → upgrade | PostgreSQL 17 隔离空库完成 upgrade → check → downgrade base → upgrade | PASS |
+| ORM 与批准 schema 一致 | SQLAlchemy metadata/迁移/Prisma 对照测试 | 11 表全部列/可空性/主键/关系/索引/唯一键/外键及 Decimal/DateTime/JSONB/枚举测试通过；Alembic check 无漂移 | PASS |
+| 配置/日志安全 | 缺失配置与日志捕获测试 | 缺失配置快速失败、错误隐藏输入、日志 request ID/无秘密测试通过 | PASS |
+| 质量门禁 | pytest、Ruff format/lint、mypy | uv lock 离线检查通过；Ruff format/lint、mypy 通过；pytest `25 passed` | PASS |
+| 无后续阶段功能 | 目录、路由和最终 diff 审查 | OpenAPI 仅 Core/AI 根路由和 live/ready；范围扫描与最终自审通过 | PASS |
 
 ## P00 验收清单
 
@@ -75,13 +104,24 @@
 
 ## 当前阻塞
 
-无 P00 阻塞。P00 已完成。
-
-旧系统依赖未安装使运行时 API 基线不可用，但已作为已知缺口记录；P01 将建立可复现的 Python/测试环境，不要求在 P00 安装 NestJS 依赖。
+无实现或验收阻塞。用户已手动补充 `greenlet 3.5.5`，P01 全部自动化验收和最终自审通过。阶段仍保持 `IN_PROGRESS`，直到当前 P01 文件安全提交并推送到新 `origin`。
 
 ## 准确下一动作
 
-结束本次执行，不启动 P01。用户在新的执行中明确启动 P01 后，必须重新加载 `en-learning-backend-refactor`，读取根 `AGENTS.md`、本文件和 P01 阶段文件，再建立新的阶段锁。
+仅暂存 P01 代码与 `AGENTS.md`、`docs/fastapi-refactor/DECISIONS.md`、本文件、P01 阶段文件，明确排除 `.agents/`、`.codex/`、`.env`、`.venv` 和缓存；检查暂存 diff 后创建 P01 主提交并推送。推送成功后再记录完成状态并推送完成记录，结束本次执行。
+
+## P01 已完成动作（待验收）
+
+1. 建立 Python 3.12 `pyproject.toml`、安全 `.env.example`、本地忽略规则与启动/质量命令。
+2. 建立 Core API、AI API 两个 factory 入口，保留 `/api/v1/`、`/ai/v1/` 根契约。
+3. 实现 request ID、JSON 日志、统一成功/失败 envelope、验证/HTTP/未知异常映射。
+4. 实现不依赖外部服务的 live 与逐项、不泄密的 PostgreSQL/Redis/MinIO ready 检查。
+5. 使用 lifespan 管理 SQLAlchemy engine、Redis、MinIO HTTP pool、通用 HTTP 与 LLM HTTP client；应用导入不建立网络连接。
+6. 映射 11 个 Prisma 模型，保留物理名称、关系、级联、索引、唯一键、Decimal、DateTime、JSONB 与枚举。
+7. 建立仅用于空库的可逆 Alembic 初始迁移，并记录生产基线/stamp 约束。
+8. 选定 Taskiq + Redis Stream broker、独立 scheduler，并记录确认、重试、幂等、失败记录与关停边界。
+9. 增加配置、契约、健康、生命周期、进程、ORM、worker 重试和真实迁移往返测试；最终 `25 passed`。
+10. 完成兼容、安全、迁移、异步、资源、测试和范围自审；修正健康 envelope 默认值、未知异常日志脱敏、SQLAlchemy async extra 和 Uvicorn 信号断言，并完成复测。
 
 ## 阶段结束记录模板
 

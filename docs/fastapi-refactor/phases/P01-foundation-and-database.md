@@ -1,6 +1,6 @@
 # P01：FastAPI 工程骨架与数据库基础
 
-状态：`NOT_STARTED`
+状态：`IN_PROGRESS`
 
 ## 启动条件
 

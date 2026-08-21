@@ -76,3 +76,26 @@
 - 状态：已确认
 - 决策：支付宝通知必须验签、验订单/金额/商户并幂等事务落库；事务提交后才发 Socket.IO 事件，通知失败可补偿。
 - 影响：不能在数据库事务中直接把一次 Socket emit 当作可靠交付；前端还需通过 API 查询确认最终状态。
+
+## D013：P01 锁定 Taskiq Redis Stream worker
+
+- 状态：已确认
+- 决策：Python worker 使用 `taskiq==0.12.4` 与 `taskiq-redis==1.2.3`；broker 采用 `RedisStreamBroker`，scheduler 采用独立进程与 `ListRedisScheduleSource`。
+- 原因：Redis Stream broker 提供消费组和消息确认，能避免 Pub/Sub 与 List broker 在 worker 崩溃时直接丢失已取消息；Taskiq 同时支持 async task、独立 scheduler 和信号关停。
+- 重试：默认接入 `SimpleRetryMiddleware`，只有任务显式声明 `retry_on_error` 时才重试；P05 必须为外部副作用任务锁定最大次数、退避、超时和失败记录。
+- 幂等：队列确认和重试不等于业务幂等。P05 必须为支付、邮件与调度任务设计稳定任务键、数据库唯一约束或分布式锁，不能依赖进程内状态。
+- 失败队列：Taskiq/Redis Stream 不自动满足项目的死信审计要求；P05 必须实现明确失败记录与可控重放，未完成前不承诺等价替代 BullMQ 全部行为。
+- 关停：HTTP 与 worker 分别管理资源；worker 通过 Taskiq startup/shutdown hook 创建并关闭数据库、Redis、MinIO、HTTP/LLM 客户端，scheduler 独立运行。
+
+## D014：保持 Prisma PostgreSQL 物理 schema
+
+- 状态：已确认
+- 决策：P01 的 SQLAlchemy/Alembic 保留现有大小写表名、camelCase 列名、索引/外键名称、`DECIMAL(65,30)`、`JSONB`、`TradeStatus` 原生枚举和 `TIMESTAMP(3) WITHOUT TIME ZONE`。
+- 时间语义：旧 Prisma 物理列无时区。为避免灰度期两套 ORM 争用 schema，P01 不改列型；应用层统一按 UTC 生成 naive datetime。改为 `TIMESTAMPTZ` 必须另行设计数据转换与双后端兼容方案。
+- 影响：Python 属性使用 snake_case，但显式映射旧物理名称；所有外键保持 `ON DELETE/UPDATE CASCADE`，请求会话不隐式提交，业务事务由后续阶段显式划定。
+
+## D015：Alembic 初始迁移仅用于空库
+
+- 状态：已确认
+- 决策：P01 初始迁移可对空 PostgreSQL 完整建表/降级/再升级；应用启动绝不自动执行迁移。
+- 生产约束：现有生产库在 P07 前不得直接运行该初始迁移。P07 必须先比对实际 schema 与 P01 metadata，再通过受控 `stamp`/基线流程接管迁移历史，避免 Alembic 与 Prisma 同时创建既有对象。
