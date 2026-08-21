@@ -1,4 +1,4 @@
-from sqlalchemy import Enum, Numeric
+from sqlalchemy import Enum, Integer, Numeric
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP
 from sqlalchemy.orm import configure_mappers
 
@@ -49,6 +49,7 @@ EXPECTED_COLUMNS = {
         "tag",
         "bnc",
         "frq",
+        "frqRank",
         "exchange",
         "gk",
         "zk",
@@ -150,6 +151,7 @@ EXPECTED_NULLABLE_COLUMNS = {
         "tag",
         "bnc",
         "frq",
+        "frqRank",
         "exchange",
         "gk",
         "zk",
@@ -197,6 +199,9 @@ def test_metadata_matches_legacy_tables_and_special_types() -> None:
     assert user.c.createdAt.type.timezone is False
     assert user.c.createdAt.type.precision == 3
 
+    word_book = Base.metadata.tables["WordBook"]
+    assert isinstance(word_book.c.frqRank.type, Integer)
+
 
 def test_metadata_preserves_all_columns_nullability_and_primary_keys() -> None:
     for table_name, expected_columns in EXPECTED_COLUMNS.items():
@@ -214,16 +219,17 @@ def test_metadata_preserves_index_names_and_uniqueness() -> None:
         "User": {"User_email_key": True, "User_phone_key": True},
         "WordBookRecord": {"WordBookRecord_userId_wordId_key": True},
         "WordBook": {
-            "WordBook_word_idx": False,
+            "WordBook_word_key": True,
             "WordBook_tag_idx": False,
             "WordBook_word_tag_idx": False,
+            "WordBook_frqRank_word_id_idx": False,
         },
         "PaymentRecord": {
             "PaymentRecord_outTradeNo_key": True,
             "PaymentRecord_tradeNo_idx": False,
         },
         "CourseRecord": {"CourseRecord_userId_courseId_key": True},
-        "Course": {},
+        "Course": {"Course_value_key": True},
         "Visitor": {
             "Visitor_anonymousId_key": True,
             "Visitor_userId_idx": False,

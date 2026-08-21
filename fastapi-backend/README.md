@@ -1,8 +1,7 @@
 # en-learning FastAPI backend
 
-P01 establishes the two HTTP application entries, the worker/scheduler boundary,
-shared lifecycle resources, health contracts, SQLAlchemy models, and Alembic.
-It intentionally contains no data import or business endpoints.
+P01 establishes the process and database foundation. P02 adds deterministic,
+auditable development-data initialization; it still contains no migrated business API.
 
 ## Local setup
 
@@ -28,6 +27,23 @@ Migrations are always explicit and are never run from an application lifespan:
 uv run alembic upgrade head
 uv run alembic downgrade base
 ```
+
+## P02 development bootstrap
+
+The bootstrap is disabled for `ENVIRONMENT=production`. In development or test it performs
+`migrate -> verify/download pinned ECDICT -> batch word upsert -> course upsert -> MinIO
+course asset upsert -> verify -> JSON report` with one command:
+
+```bash
+uv run en-learning-bootstrap
+```
+
+The fixed ECDICT version, commit, SHA-256, byte size, and MIT attribution are recorded in
+`resources/ecdict-source.json` and `resources/ECDICT-LICENSE.txt`. The 65.9 MB CSV is cached
+under ignored `.bootstrap/`; pass `--source /absolute/path/ecdict.csv --no-download` for an
+offline run. Reports and rejected-row JSONL are also written under `.bootstrap/` by default.
+Each accepted CSV batch commits independently, so a failed run keeps an explicit recovery
+point and is safe to rerun. No user, learning, payment, analytics, or chat rows are seeded.
 
 ## Quality gates
 
