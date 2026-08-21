@@ -1,6 +1,6 @@
 # P00：仓库、计划与旧系统基线
 
-状态：`IN_PROGRESS`
+状态：`COMPLETED`
 
 当前阶段锁：`P00`
 
@@ -42,7 +42,7 @@
 | 新仓库继承历史 | 比较 main commit | 两个远端 main 均为 `d406e118...` | PASS |
 | 无秘密和越界文件 | status/diff/敏感模式检查 | 只暂存 13 个 P00 文档；常见密钥检查通过 | PASS |
 | 文档质量通过 | 链接/格式/空白检查 | 路径存在；diff check、空白和冲突标记检查通过 | PASS |
-| 提交推送成功 | commit/branch/remote 检查 | 待执行 | PENDING |
+| 提交推送成功 | commit/branch/remote 检查 | `984d60e` 已推送到 `origin/codex/p00-repository-baseline` | PASS |
 | 未进入 P01 | 最终文件范围 | `fastapi-backend/` 不存在，无运行时代码 | PASS |
 
 ## 回退
@@ -50,3 +50,13 @@
 - 文档用普通 revert 回退。
 - 若需要恢复本地默认远端：保留新远端为其他名称，再将 `nest-origin` 改回 `origin`。
 - 不删除、不 force push 旧仓库或新仓库的历史。
+
+## 完成记录
+
+- 完成日期：2026-08-21
+- 主提交：`984d60e`
+- 分支：`codex/p00-repository-baseline`
+- 新远端：`origin -> https://github.com/cjw260/en-learning-fastAPI.git`
+- 旧远端：`nest-origin -> https://github.com/cjw260/en-learning.git`
+- 审查：PASS
+- 下一步：结束当前执行；P01 必须由用户在新执行中启动并重新加载 skill。

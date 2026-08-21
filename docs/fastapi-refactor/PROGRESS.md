@@ -6,11 +6,11 @@
 
 | 字段 | 值 |
 |---|---|
-| Active phase | `P00` |
-| Phase status | `IN_PROGRESS` |
-| Phase lock | `ENABLED` |
-| Allowed scope | 仓库、计划、进度、决策和旧系统基线文档；Git 远端/阶段分支治理 |
-| Forbidden scope | FastAPI 运行时代码、依赖安装、数据库操作、业务迁移、生产部署 |
+| Active phase | `NONE`（P00 已完成，等待用户在新执行中启动 P01） |
+| Phase status | `COMPLETED` |
+| Phase lock | `CLOSED`（不得在本次执行中启动 P01） |
+| Allowed scope | 仅记录 P00 完成状态 |
+| Forbidden scope | P01-P07 的编码、依赖安装、数据库操作、业务迁移、生产部署 |
 | Required skill | `en-learning-backend-refactor` |
 | Skill status | `LOADED` |
 | Skill loaded at | 2026-08-21 当前任务 |
@@ -20,7 +20,7 @@
 
 | 阶段 | 状态 | 完成提交 | 备注 |
 |---|---|---|---|
-| P00 仓库、计划与基线 | `IN_PROGRESS` | — | 当前唯一活动阶段 |
+| P00 仓库、计划与基线 | `COMPLETED` | `984d60e` | 主提交已推送到新 origin 的阶段分支 |
 | P01 工程骨架与数据库基础 | `NOT_STARTED` | — | 等待新执行与用户授权 |
 | P02 数据初始化 | `NOT_STARTED` | — | — |
 | P03 AI 服务 | `NOT_STARTED` | — | — |
@@ -58,7 +58,7 @@
 | 新仓库继承历史 | 比较本地/new origin main commit | 两个远端 `main` 均为 `d406e118ede2fb25ca14b4e95443a2f8dbdb7977` | PASS |
 | 文档质量检查 | 链接、`git diff --check`、敏感模式 | 13 个文件存在；空白/冲突/常见密钥检查通过 | PASS |
 | 只含 P00 范围 | 最终 diff/status | 仅暂存 `AGENTS.md` 与 `docs/fastapi-refactor/**`；P01 目录不存在 | PASS |
-| 阶段提交与推送 | commit/remote branch 检查 | 尚未执行 | PENDING |
+| 阶段提交与推送 | commit/remote branch 检查 | `984d60e` 已推送到 `origin/codex/p00-repository-baseline` | PASS |
 
 ## 已完成动作
 
@@ -75,25 +75,24 @@
 
 ## 当前阻塞
 
-无 P00 实施阻塞。旧系统依赖未安装使运行时 API 基线不可用，但 P00 已将其作为已知缺口记录；本阶段不安装依赖，P01 再建立可复现的 Python/测试环境。
+无 P00 阻塞。P00 已完成。
+
+旧系统依赖未安装使运行时 API 基线不可用，但已作为已知缺口记录；P01 将建立可复现的 Python/测试环境，不要求在 P00 安装 NestJS 依赖。
 
 ## 准确下一动作
 
-1. 最终复核文档一致性、路径、敏感信息与 Git diff。
-2. 创建 P00 阶段分支，只暂存本阶段文档，提交并推送。
-3. 回填完成证据，将 P00 标记为 `COMPLETED`，提交并推送状态记录。
-4. 结束本次执行，不启动 P01。
+结束本次执行，不启动 P01。用户在新的执行中明确启动 P01 后，必须重新加载 `en-learning-backend-refactor`，读取根 `AGENTS.md`、本文件和 P01 阶段文件，再建立新的阶段锁。
 
 ## 阶段结束记录模板
 
 ```text
-Completed at:
-Review result:
-Verification commands:
-Commit:
-Branch:
-Remote:
-Push result:
-Remaining non-blocking risks:
-Next phase start condition:
+Completed at: 2026-08-21
+Review result: PASS；仅 13 个 P00 文档进入主提交，无运行时代码、秘密或无关用户文件
+Verification commands: 路径检查、空白检查、冲突标记检查、常见密钥检查、git diff --cached --check、远端 commit 对比
+Commit: 984d60e (P00 主提交)
+Branch: codex/p00-repository-baseline
+Remote: origin -> https://github.com/cjw260/en-learning-fastAPI.git
+Push result: PASS
+Remaining non-blocking risks: 旧 NestJS 依赖未安装，无法执行运行时 API 基线；仓库原本没有测试/CI
+Next phase start condition: 用户在新执行中明确启动 P01，并重新加载必需 skill
 ```
