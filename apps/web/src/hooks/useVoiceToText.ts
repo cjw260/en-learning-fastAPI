@@ -44,7 +44,6 @@ export const useVoiceToText = (options: Options) => {
                 fullText += event.results[i]![0]!.transcript;
             }
             callback?.(fullText);
-            console.log(fullText);
         }
     }
     //停止语音转文字

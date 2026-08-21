@@ -1,6 +1,8 @@
 <template>
     <div class="flex-1 h-[750px] p-5 bg-purple-50 flex flex-col">
         <div class="flex-1 overflow-y-auto">
+            <el-skeleton v-if="historyLoading" :rows="6" animated />
+            <el-empty v-else-if="list?.length === 0" description="暂无聊天记录，开始一段新对话吧" />
             <div v-for="(item, index) in list" :key="index">
                 <div class="flex justify-end items-center  gap-4 mt-5 mb-5 mr-5" v-if="item.role === 'human'">
                     <div class="text-sm text-white max-w-[80%] rounded-lg p-2 bg-blue-500 shadow-md">
@@ -13,6 +15,8 @@
                 <div class="flex justify-start items-center gap-4 mt-5 mb-5" v-else>
                     <div> <el-avatar :size="35">AI</el-avatar></div>
                     <div>
+                        <span v-if="item.role === 'ai' && isStreaming && index === (list?.length ?? 0) - 1 && !item.reasoning && !item.content"
+                            class="text-xs text-zinc-400">AI 正在思考…</span>
                         <div v-if="item.role === 'ai' && item.reasoning" class="text-[12px] text-gray-500 max-w-[80%] p-2">
                             {{ item.reasoning }}
                         </div>
@@ -44,10 +48,12 @@
                     <span>联网搜索</span>
                 </div>
             </div>
+            <el-alert v-if="statusMessage" class="mb-3" :title="statusMessage" type="warning" show-icon :closable="false" />
             <!-- 输入框 -->
             <div class="flex">
-                <el-input @keyup.enter="sendMessage" type="textarea" :rows="2" v-model="message" placeholder="请输入内容" />
-                <el-button class="ml-2" :icon="Position" type="primary" @click="sendMessage"></el-button>
+                <el-input @keyup.enter="sendMessage" type="textarea" :rows="2" v-model="message" placeholder="请输入内容" :disabled="isStreaming" />
+                <el-button v-if="!isStreaming" class="ml-2" :icon="Position" type="primary" @click="sendMessage" aria-label="发送消息"></el-button>
+                <el-button v-else class="ml-2" type="danger" plain @click="emits('onCancel')">停止</el-button>
                 <el-button v-if="!isRecording" class="ml-2" :icon="Mic" type="primary" @click="startRecording"></el-button>
                 <el-button v-else class="ml-2" :icon="VideoPause" type="primary" @click="stopRecording"></el-button>
             </div>
@@ -64,9 +70,14 @@ import '@/assets/css/deep-seek.css'
 import { useVoiceToText } from '@/hooks/useVoiceToText'
 const deepThink = ref(false)//深度思考
 const webSearch = ref(false)//网络搜索
-const emits = defineEmits(['onSendMessage'])
+const emits = defineEmits(['onSendMessage', 'onCancel'])
 const chatRef = useTemplateRef<HTMLDivElement>('chatRef')
-const props = defineProps<{ list?: ChatMessageList }>()//消息列表
+const props = defineProps<{
+    list?: ChatMessageList
+    historyLoading?: boolean
+    isStreaming?: boolean
+    statusMessage?: string
+}>()//消息列表
 const message = ref<string>('')
 const { isRecording, start, stop } = useVoiceToText({
     lang: 'zh-CN',
@@ -74,7 +85,7 @@ const { isRecording, start, stop } = useVoiceToText({
 })
 //发送消息
 const sendMessage = () => {
-    if (!message.value) return
+    if (!message.value.trim() || props.isStreaming) return
     emits('onSendMessage', message.value, deepThink.value, webSearch.value)
     message.value = ''
 }
@@ -86,7 +97,6 @@ const parseMarkdown = (content: string) => {
 //开始录音
 const startRecording = () => {
     start((result) => {
-        console.log(result)
         message.value = result
     })
 }

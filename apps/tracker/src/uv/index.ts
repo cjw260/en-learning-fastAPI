@@ -7,8 +7,8 @@ import { UAParser } from "ua-parser-js"
 export const getBrowserInfo = () => {
     const ua = new UAParser()
     return {
-        browser: ua.getBrowser().name,
-        os: ua.getOS().name,
+        browser: ua.getBrowser().name || 'unknown',
+        os: ua.getOS().name || 'unknown',
         device: ua.getDevice().type || 'desktop'
     }
 }

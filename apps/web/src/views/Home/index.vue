@@ -197,9 +197,7 @@ const initProject = () => {
     })
 }
 const showLogin = () => {
-    login().then(() => {
-        console.log('登录成功之后跳转页面')
-    })
+    void login()
 }
 
 onMounted(() => {

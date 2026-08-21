@@ -20,6 +20,7 @@
         <el-form-item class="pt-4">
             <el-button type="primary" size="large"
                 class="w-full h-12 text-base font-semibold bg-linear-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 border-0"
+                :loading="isSubmitting"
                 @click="handleRegister">
                 注册
             </el-button>
@@ -38,9 +39,11 @@ import type { FormInstance } from 'element-plus'//表单实例类型
 import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'//消息提示组件
 import { useLogin } from '@/hooks/useLogin'
+import { apiErrorMessage } from '@/apis/errors'
 const userStore = useUserStore()
 const { hide } = useLogin()
 const formRef = useTemplateRef<FormInstance>('formRef')
+const isSubmitting = ref(false)
 const form = ref<UserRegister>({
     name: '',
     phone: '',
@@ -64,18 +67,21 @@ const rules = {
 }
 
 const handleRegister = async () => {
-   await formRef.value?.validate()//触发校验
-   const res = await register({
-    ...toRaw(form.value),
-    password: toRaw(md5(form.value.password)),//密码加密
-   })
-   if(res.code === 200){
-    userStore.setUser(res.data)//保存用户信息到全局状态
-    ElMessage.success('注册成功！')
-    hide()
-   }
-   else{
-    ElMessage.error(res.message)
+   const valid = await formRef.value?.validate().catch(() => false)
+   if (!valid) return
+   isSubmitting.value = true
+   try {
+       const res = await register({
+        ...toRaw(form.value),
+        password: toRaw(md5(form.value.password)),//密码加密
+       })
+       userStore.setUser(res.data)//保存用户信息到全局状态
+       ElMessage.success('注册成功！')
+       hide()
+   } catch (error) {
+       ElMessage.error(apiErrorMessage(error, '注册失败'))
+   } finally {
+       isSubmitting.value = false
    }
 }
 </script>

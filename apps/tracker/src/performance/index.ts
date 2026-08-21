@@ -1,8 +1,8 @@
 import { report } from "@/report";
 import type { PerformanceDto, TrackerConfig } from "@en/common/tracker";
-import {onINP, onCLS} from 'web-vitals'
+import {onINP, onCLS, onLCP} from 'web-vitals'
 
-export const reportPerformance = async (visitorId: string,config: TrackerConfig) => {
+export const reportPerformance = (visitorId: string,config: TrackerConfig) => {
     let url = config.baseUrl + config.performance.api
     let fp = 0 //首次绘制
     let fcp = 0//首次内容绘制
@@ -19,18 +19,9 @@ export const reportPerformance = async (visitorId: string,config: TrackerConfig)
     if (fcpEntry) {
         fcp = fcpEntry.startTime;
     }
-    let lcpPromise = new Promise<{lcpTime: number, lcpObserver: PerformanceObserver}>((resolve) => {
-        let lcpObserver = new PerformanceObserver((entryList) => {
-            resolve({
-                lcpTime: entryList.getEntries()[0].startTime || 0,
-                lcpObserver
-            })
-        })
-        lcpObserver.observe({type: 'largest-contentful-paint', buffered: true}) // buffered 历史记录和新的LCP性能都监听
+    onLCP((metric) => {
+        lcp = metric.value
     })
-    const {lcpTime, lcpObserver} = await lcpPromise
-    lcpObserver.disconnect()//断开监听
-    lcp = lcpTime
     //INP
     onINP((metric) => {
         inp = metric.value
@@ -41,7 +32,6 @@ export const reportPerformance = async (visitorId: string,config: TrackerConfig)
     })
     window.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "hidden") {
-            console.log(fp, fcp, lcp, cls, inp)
             const body: PerformanceDto = {
                 visitorId,
                 fp,

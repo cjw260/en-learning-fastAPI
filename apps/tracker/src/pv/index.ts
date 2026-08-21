@@ -25,14 +25,14 @@ export const reportPv = (visitorId: string,config: TrackerConfig) => {
 
     })
     const originalPushState = history.pushState;//获取原生的pushState方法
-    history.pushState = function () {
-        originalPushState.apply(this, arguments);//执行原生的pushState方法
+    history.pushState = function (data: unknown, unused: string, url?: string | URL | null) {
+        originalPushState.call(this, data, unused, url);//执行原生的pushState方法
         reportView(visitorId,config)
 
     }
     const originalReplaceState = history.replaceState;//获取原生的replaceState方法
-    history.replaceState = function () {
-        originalReplaceState.apply(this, arguments);//执行原生的replaceState方法
+    history.replaceState = function (data: unknown, unused: string, url?: string | URL | null) {
+        originalReplaceState.call(this, data, unused, url);//执行原生的replaceState方法
         reportView(visitorId,config)
     }
 }

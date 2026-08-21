@@ -6,15 +6,15 @@
 
 | 字段 | 值 |
 |---|---|
-| Active phase | `NONE`（P05 已完成，等待用户在新执行中启动 P06） |
-| Phase status | `COMPLETED` |
-| Phase lock | `CLOSED`（不得在本次执行中启动 P06） |
-| Allowed scope | 仅记录 P05 完成状态 |
-| Forbidden scope | P06 全链路前端适配与容量定案、P07 生产部署/Nginx/systemd/切流与旧服务处置 |
+| Active phase | `P06`：前端适配与全链路验收 |
+| Phase status | `IN_PROGRESS` |
+| Phase lock | `P06 ONLY`（不得在本次执行中启动 P07） |
+| Allowed scope | 最小前端安全适配、契约/E2E/并发与资源验收、验收报告、容量建议和 P07 上线前只读清单 |
+| Forbidden scope | P07 生产部署、数据库切换、Nginx/systemd/PM2、真实支付、生产凭证/数据与旧服务处置 |
 | Required skill | `en-learning-backend-refactor` |
 | Skill status | `LOADED` |
-| Skill loaded at | 2026-08-21（P05 当前执行重新加载） |
-| Next phase | `P06`，仅由用户在新的执行中明确启动并重新通过 skill 门禁 |
+| Skill loaded at | 2026-08-21（P06 当前执行重新加载） |
+| Next phase | `P07`，仅在 P06 全部验收、审查、复测、提交和推送完成后，由用户在新的执行中明确启动 |
 
 ## 阶段状态
 
@@ -26,8 +26,35 @@
 | P03 AI 服务 | `COMPLETED` | `fc0e503` | 主提交已推送到 `origin/codex/p03-ai-service` |
 | P04 核心业务 API | `COMPLETED` | `b51f41b` | 主提交已推送到 `origin/codex/p04-core-api` |
 | P05 支付/Socket.IO/worker | `COMPLETED` | `d9ed248` | 主提交已推送到 `origin/codex/p05-payment-socket-worker` |
-| P06 前端与全链路验收 | `NOT_STARTED` | — | — |
+| P06 前端与全链路验收 | `IN_PROGRESS` | — | 当前阶段锁 |
 | P07 灰度上线与清理 | `NOT_STARTED` | — | — |
+
+## P06 启动基线
+
+| 检查 | 证据 | 状态 |
+|---|---|---|
+| 用户授权 | 用户在 2026-08-21 新执行中明确要求进行下一个阶段 | PASS |
+| 必需 skill | 本次从仓库完整读取 `en-learning-backend-refactor` | PASS |
+| 仓库标识 | 根目录与四项标识全部存在 | PASS |
+| P05 前置条件 | `d9ed248` 主提交与 `fe6f051` 完成记录已推送 | PASS |
+| 启动分支 | 从已完成 P05 创建 `codex/p06-frontend-verification` | PASS |
+| 启动工作区 | 无已修改/已暂存文件；仅 `.agents/`、`.codex/` 为既有未跟踪内容，继续保护且不提交 | PASS |
+| 调用方基线 | 已重读 Axios refresh、AI SSE、Socket、支付弹窗、tracker、登录/资料/课程/学习/词库/聊天调用方 | PASS |
+| 技术映射 | 已完整读取 `framework-parity.md`，锁定真实 HTTP/SSE/Socket 运行时契约、多进程与资源观察边界 | PASS |
+| 视觉门禁 | 1440 × 900 保存并复验主页、登录、支付、课程、词库、学习与 AI；保持既有布局，仅补加载/空/错误/取消/最终确认状态 | PASS |
+
+## P06 验收清单
+
+| 标准 | 验证方法 | 当前证据 | 状态 |
+|---|---|---|---|
+| 本次只执行 P06 | 阶段锁、最终 diff 与生产改动扫描 | 仅前端安全适配、可选支付响应字段、测试/验收脚本与 P06 文档；未改 server、部署或生产 | PASS |
+| Web 构建、类型与新增自动化 | `pnpm` type-check/build/test | Web `9 passed`；tracker type-check PASS；Web 顺序 type-check + tracker build + Vite production build PASS | PASS |
+| 关键用户旅程及状态 | 隔离本地服务与实际浏览器同视口验收 | 注册/错误登录/恢复、资料头像、8 课程、签名支付、10 词学习、15 词分页、AI 普通/深度/历史/取消、tracker 全部通过 | PASS |
+| 契约差异受控 | NestJS/FastAPI 夹具、旧调用方与批准差异清单 | `contracts/P06-frontend-compatibility.md` 锁定路径、字段、envelope、SSE、Socket、支付与回退差异 | PASS |
+| refresh/SSE/Socket 无悬挂或重复 | 并发刷新、失败清队列、取消/超时/401、重连/多事件测试 | 共享一次 refresh；失败统一 reject；SSE 五类自动化及浏览器停止；Socket 新 token 重连且 FastAPI 只信 JWT | PASS |
+| 支付 API 最终确认 | Socket 事件、轮询/重连与状态 API 测试 | Poller 合并并发查询且 success 一次；浏览器回调后由状态 API 确认并切换我的课程 | PASS |
+| 性能与资源基线 | 关键 API 并发冒烟、延迟统计、数据库池/Redis/FD 重复观察 | 每端点 200 请求/并发 20/0 错误/P95 < 500 ms；PG `6→8→8`、Redis `9→9→9`、Core FD `89→91→91` | PASS |
+| P07 清单完整且未改生产 | 验收报告、配置建议、回退与生产范围扫描 | `P06-ACCEPTANCE.md` 含容量起点、风险和 P07 只读清单；未连接或修改生产 | PASS |
 
 ## P05 启动基线
 
@@ -217,11 +244,24 @@
 
 ## 当前阻塞
 
-无 P05 阻塞。实现、自动化、双进程 Socket.IO、故障注入、前端构建、staged diff/敏感信息审查和主提交推送均通过。
+无 P06 功能或验收阻塞。实现、自动化、实际浏览器、契约、并发/资源、生产构建和 P07 只读清单均已通过；尚待最终 staged diff/敏感信息/范围审查、主提交与安全推送。
 
 ## 准确下一动作
 
-结束本次执行，不启动 P06。用户在新的执行中明确启动 P06 后，必须重新加载 `en-learning-backend-refactor`，读取根 `AGENTS.md`、本文件和 P06 阶段文件，再建立新的阶段锁。
+只暂存 P06 文件并排除 `.agents/`、`.codex/`，完成 staged diff/敏感/生产范围检查，创建并推送 P06 主提交；推送成功后才把阶段标记为 `COMPLETED`，再提交并推送完成记录。不得启动 P07。
+
+## P06 已完成动作
+
+1. 使用一个共享 refresh 协调器统一 Core Axios、AI Axios 与 SSE：并发 401 只刷新一次，成功后各自重放一次，失败时全部 reject 并统一清空会话。
+2. SSE 增加 Bearer、首帧前一次 401 refresh、35 秒首帧/130 秒总时限、显式取消、首帧后故障不重试和定向 assistant 累加，避免重复与悬挂。
+3. Socket.IO 以 `auth.token` 为 FastAPI 身份来源，token 变化时同一客户端重连；同时保留旧 NestJS query 作为回退提示，FastAPI 强制与 JWT 用户一致。
+4. 支付弹窗对 Socket、重连、2 秒轮询和手工操作统一执行状态 API 最终确认；并发查询合并、成功只发布一次，旧响应可从 Alipay URL 解析订单号。
+5. Tracker `update-uv` 携带 Bearer，初始化失败可重试；清理类型错误、未处理 Promise、阻塞式 LCP 和调试日志，并把 tracker 类型检查/声明构建纳入 Web 构建门禁。
+6. 为登录、注册、资料头像、课程、词库、学习、聊天补充 loading/empty/error/submit 状态；修复 `/en/` 3D 模型资源路径及动画、controls、renderer、geometry/material 生命周期。
+7. 实际浏览器在 1440 × 900 完成注册/错误登录/恢复、资料头像、8 课程、签名支付/Socket/API 最终确认、10 词学习、15 词分页、AI 普通/深度/角色历史/停止和 tracker。
+8. 浏览器恰逢 access token 过期，Core 日志证明支付创建 401 → 唯一 refresh 200 → 原请求 200；签名回调、状态查询、我的课程和 wordNumber=10 全部闭环。
+9. 本机每端点 200 请求、并发 20 的两轮冒烟均 0 错误且稳定轮 P95 < 500 ms；PG 连接 `6→8→8`、Redis clients `9→9→9`、Core FD `89→91→91`，未见持续增长。
+10. 新增 P06 兼容矩阵、验收报告、容量起点与 P07 只读清单；最终 Web `9 passed`、Python `81 passed`，uv/Ruff/mypy/tracker type-check/Web production build 全部通过。
 
 ## P05 已完成动作
 

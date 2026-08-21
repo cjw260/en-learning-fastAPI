@@ -21,7 +21,9 @@
             <el-checkbox v-model="query.ky">考研</el-checkbox>
             <el-button @click="searchWord" class="ml-10" type="primary">搜索</el-button>
         </div>
-        <div class="grid grid-cols-3 gap-2">
+        <el-skeleton v-if="isLoading" :rows="8" animated />
+        <el-alert v-else-if="errorMessage" class="mb-6" :title="errorMessage" type="error" show-icon :closable="false" />
+        <div v-else class="grid grid-cols-3 gap-2">
             <div class="bg-white hover:bg-blue-50 border border-blue-200 text-gray-800 rounded-[10px] p-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md h-[220px]"
                 v-for="item in list" :key="item.id">
                 <div class="">
@@ -56,6 +58,7 @@ import { onMounted,ref  } from 'vue'
 import { Reading, VideoPlay } from '@element-plus/icons-vue'
 import type { WordQuery, WordList } from '@en/common/word'
 import { useAudio } from '@/hooks/useAudio'
+import { apiErrorMessage } from '@/apis/errors'
 
 const { playAudio } = useAudio({
     rate: 0.7,
@@ -65,6 +68,8 @@ const { playAudio } = useAudio({
 })
 const total = ref<WordList['total']>(0)
 const list = ref<WordList['list']>([])
+const isLoading = ref(false)
+const errorMessage = ref('')
 const query = ref<WordQuery>({  
     page: 1,
     pageSize: 12,
@@ -79,12 +84,19 @@ const query = ref<WordQuery>({
     ky: false,
  })
 const getList = async () => {
-    const res = await getWordBookList(query.value)
-    if(res.success) {
+    isLoading.value = true
+    errorMessage.value = ''
+    try {
+        const res = await getWordBookList(query.value)
         total.value = res.data.total
         list.value = res.data.list
+    } catch (error) {
+        total.value = 0
+        list.value = []
+        errorMessage.value = apiErrorMessage(error, '词库加载失败')
+    } finally {
+        isLoading.value = false
     }
-    console.log(res)
 }
 const searchWord = () => {
     query.value.page = 1

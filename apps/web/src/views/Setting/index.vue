@@ -8,7 +8,7 @@
 
             <div class="flex gap-2">
                 <el-button @click="init">重置</el-button>
-                <el-button @click="onSave" type="primary">保存</el-button>
+                <el-button @click="onSave" type="primary" :loading="isSaving">保存</el-button>
             </div>
         </div>
 
@@ -121,10 +121,12 @@ import { ElMessage } from 'element-plus'
 import { useAvatar } from '@/hooks/useAvatar'
 import { useLogin } from '@/hooks/useLogin'
 import { ElMessageBox } from 'element-plus'
+import { apiErrorMessage } from '@/apis/errors'
 const { logout } = useLogin()
 const { customAvatar } = useAvatar()
 const formRef = useTemplateRef<FormInstance>('formRef')
 const previewUrl = ref<string>('')
+const isSaving = ref(false)
 const userStore = useUserStore()
 const form = ref<UserUpdate>({
     name: '',//用户名
@@ -160,13 +162,17 @@ const rules: FormRules = {
 }
 //提交保存接口
 const onSave = async () => {
-    await formRef.value?.validate()
-    const res = await updateUser(form.value)
-    if (res.success && res.data) {
+    const valid = await formRef.value?.validate().catch(() => false)
+    if (!valid) return
+    isSaving.value = true
+    try {
+        const res = await updateUser(form.value)
         userStore.updateUser(res.data)
         ElMessage.success('保存成功')
-    } else {
-        ElMessage.error(res.message)
+    } catch (error) {
+        ElMessage.error(apiErrorMessage(error, '保存失败'))
+    } finally {
+        isSaving.value = false
     }
 
 }
@@ -184,12 +190,12 @@ const logoutHandle = () => {
 const onAvatarSelect = async (file: UploadFile) => {
     const formData = new FormData()
     formData.append('file', file.raw as File)
-    const res = await uploadAvatar(formData)
-    if (res.success && res.data) {
+    try {
+        const res = await uploadAvatar(formData)
         form.value.avatar = res.data.databaseUrl
         previewUrl.value = res.data.previewUrl
-    } else {
-        ElMessage.error(res.message)
+    } catch (error) {
+        ElMessage.error(apiErrorMessage(error, '头像上传失败'))
     }
 }
 const init = () => {

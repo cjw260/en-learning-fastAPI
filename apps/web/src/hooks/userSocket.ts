@@ -1,59 +1,74 @@
-import {io, type Socket} from 'socket.io-client';
-import { socketUrl } from '@/apis';
-import { useUserStore } from '@/stores/user';
-let socket: Socket | null = null;
+import { io, type Socket } from 'socket.io-client'
+import { socketUrl } from '@/apis'
+import { useUserStore } from '@/stores/user'
+
+interface SocketHotData {
+  socket?: Socket | null
+  accessToken?: string | null
+}
+
+const hotData = import.meta.hot?.data as SocketHotData | undefined
+let socket: Socket | null = hotData?.socket ?? null
+let activeAccessToken: string | null = hotData?.accessToken ?? null
+
+const saveHotState = () => {
+  if (!import.meta.hot) return
+  const data = import.meta.hot.data as SocketHotData
+  data.socket = socket
+  data.accessToken = activeAccessToken
+}
+
 export const useSocket = () => {
-    const userStore = useUserStore()
-    //连接socket
-    const connect = () => {
-        const userId = userStore.user?.id
-        const accessToken = userStore.getAccessToken
-        if (!userId || !accessToken) return
-        if (socket) return//如果已经连接了，则不再连接
-        socket = io(socketUrl, {
-            transports: ['websocket'],//使用websocket协议
-            autoConnect: true,//自动连接
-            reconnection: true,//断开后自动重连
-            reconnectionAttempts: 5,//重连次数
-            reconnectionDelay: 1000,//重连间隔
-            reconnectionDelayMax: 5000,//重连间隔最大值
-            query: {
-                userId
-            },
-            auth: {
-                token: accessToken
-            }
-        })
-        //为了treeeshaking，将socket保存到import.meta.hot.data中, 在生产环境中，socket会被treeeshaking掉
-        if(import.meta.hot){
-            import.meta.hot.data.socket = socket
-        }
+  const userStore = useUserStore()
+
+  const disconnect = () => {
+    if (socket) {
+      socket.disconnect()
+      socket.removeAllListeners()
+      socket = null
+    }
+    activeAccessToken = null
+    saveHotState()
+  }
+
+  const connect = () => {
+    const accessToken = userStore.getAccessToken
+    if (!userStore.user?.id || !accessToken) {
+      disconnect()
+      return
     }
 
-    //断开连接
-    const disconnect = () => {
-        if (socket) {
-            socket.disconnect()
-            socket.removeAllListeners()
-            socket = null
-            if(import.meta.hot){
-                import.meta.hot.data.socket = null
-            }
-        }
+    if (!socket) {
+      socket = io(socketUrl, {
+        transports: ['websocket'],
+        autoConnect: false,
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        auth: { token: accessToken },
+        // The old NestJS rollback target only understands this query. FastAPI
+        // treats it as a compatibility hint and rejects it unless it matches
+        // the authenticated JWT identity.
+        query: { userId: userStore.user.id },
+      })
+      activeAccessToken = accessToken
+      saveHotState()
+      socket.connect()
+      return
     }
-    //获取socket
-    const getSocket = (): Socket | null => {
-        if (socket) {
-            return socket
-        }
-        if(import.meta.hot){
-            return import.meta.hot.data.socket
-        }
-        return null
+
+    if (activeAccessToken !== accessToken) {
+      activeAccessToken = accessToken
+      socket.auth = { token: accessToken }
+      socket.disconnect().connect()
+    } else if (!socket.connected) {
+      socket.connect()
     }
-    return {
-        connect,
-        disconnect,
-        getSocket
-    }
+    saveHotState()
+  }
+
+  const getSocket = (): Socket | null => socket
+
+  return { connect, disconnect, getSocket }
 }

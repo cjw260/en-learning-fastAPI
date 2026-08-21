@@ -12,8 +12,10 @@
                 <el-tab-pane v-if="userStore.user?.id" name="my" label="我的课程"></el-tab-pane>
 
             </el-tabs>
+            <el-skeleton v-if="isLoading" :rows="8" animated />
+            <el-alert v-else-if="errorMessage" class="mb-6" :title="errorMessage" type="error" show-icon :closable="false" />
             <!-- 课程卡片 3 列 -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 <article v-for="item in list" :key="item.id"
                     class="group bg-white rounded-2xl overflow-hidden border border-zinc-100 shadow-sm hover:shadow-lg hover:shadow-indigo-500/5 hover:border-indigo-100 transition-all duration-300 flex flex-col">
                     <div class="relative aspect-4/3 bg-zinc-100 overflow-hidden">
@@ -39,9 +41,9 @@
                     </div>
                 </article>
             </div>
-            <el-empty v-if="list.length === 0" description="暂无课程"></el-empty>
+            <el-empty v-if="!isLoading && !errorMessage && list.length === 0" description="暂无课程"></el-empty>
         </div>
-        <CoursePay v-model="payVisible" :course="selectedCourse"></CoursePay>
+        <CoursePay v-model="payVisible" :course="selectedCourse" @confirmed="onPaymentConfirmed"></CoursePay>
     </div>
 </template>
 <script setup lang="ts">
@@ -53,26 +55,39 @@ import CoursePay from './components/Pay.vue';
 import { useLogin } from '@/hooks/useLogin';
 import { useUserStore } from '@/stores/user';
 import router from '@/router';
+import { apiErrorMessage } from '@/apis/errors';
 
 const currentTab = ref('list')
 const { login } = useLogin()
 const payVisible = ref(false)//控制弹框显示隐藏
 const selectedCourse = ref<Course | null>(null)//选中的课程
 const list = ref<CourseList>([]) 
+const isLoading = ref(false)
+const errorMessage = ref('')
 const userStore =  useUserStore()
 const getList = async () => {
-    if(currentTab.value === 'list') {
-        const res = await getCourseList()
-        list.value = res.data
-    }
-    else{
-        const res = await getMyCourse()
-        list.value = res.data
+    isLoading.value = true
+    errorMessage.value = ''
+    try {
+        if(currentTab.value === 'list') {
+            const res = await getCourseList()
+            list.value = res.data
+        }
+        else{
+            const res = await getMyCourse()
+            list.value = res.data
+        }
+    } catch (error) {
+        list.value = []
+        errorMessage.value = apiErrorMessage(error, '课程加载失败')
+    } finally {
+        isLoading.value = false
     }
 }
 //打开支付弹窗
 const openPay = async (course: Course) => {
-    await login()
+    const authenticated = await login()
+    if (!authenticated) return
     if(currentTab.value === 'list'){
         payVisible.value = true
         selectedCourse.value = course
@@ -82,6 +97,10 @@ const openPay = async (course: Course) => {
 }
 const imageSrc = (url: string) => { 
     return uploadUrl + url
+}
+const onPaymentConfirmed = async () => {
+    currentTab.value = 'my'
+    await getList()
 }
 onMounted(() => {
     getList()

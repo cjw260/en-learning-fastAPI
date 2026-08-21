@@ -17,6 +17,7 @@
         <el-form-item class="pt-4">
             <el-button type="primary" size="large"
                 class="w-full h-12 text-base font-semibold bg-linear-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 border-0"
+                :loading="isSubmitting"
                 @click="handleLogin">
                 登录
             </el-button>
@@ -35,9 +36,11 @@ import type { FormInstance } from 'element-plus'//表单实例类型
 import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'//消息提示组件
 import { useLogin } from '@/hooks/useLogin'
+import { apiErrorMessage } from '@/apis/errors'
 const { hide } = useLogin()
 const userStore = useUserStore()
 const formRef = useTemplateRef<FormInstance>('formRef')
+const isSubmitting = ref(false)
 const form = ref<UserLogin>({
     phone: '',
     password: '',
@@ -54,17 +57,21 @@ const rules = {
 }
 
 const handleLogin = async () => {
-    await formRef.value?.validate()
-    const res = await login({
-        ...toRaw(form.value),
-        password: toRaw(md5(form.value.password))
-    })
-    if(res.code === 200) {
+    const valid = await formRef.value?.validate().catch(() => false)
+    if (!valid) return
+    isSubmitting.value = true
+    try {
+        const res = await login({
+            ...toRaw(form.value),
+            password: toRaw(md5(form.value.password))
+        })
         userStore.setUser(res.data)
         ElMessage.success('登录成功')
         hide()
-    }else {
-        ElMessage.error(res.message || '登录失败')
+    } catch (error) {
+        ElMessage.error(apiErrorMessage(error, '登录失败'))
+    } finally {
+        isSubmitting.value = false
     }
 }
 </script>

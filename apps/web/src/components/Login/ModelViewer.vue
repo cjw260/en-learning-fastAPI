@@ -25,7 +25,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, useTemplateRef } from 'vue'
+import { ref, computed, onBeforeUnmount, onMounted, useTemplateRef } from 'vue'
 import type { LoginType } from '@/components/Login/type'
 // Three.js 动态导入，只在组件挂载时加载（减少主包体积 ~500KB+）
 const canvasRef = useTemplateRef<HTMLCanvasElement>('canvasRef')
@@ -47,15 +47,33 @@ let scene: any = null
 let currentModel: any = null
 let mixer: any = null
 let clock: any = null
+let renderer: any = null
+let controls: any = null
+let animationFrame = 0
+let disposed = false
+
+const disposeModel = (model: any) => {
+    model?.traverse?.((node: any) => {
+        node.geometry?.dispose?.()
+        const materials = Array.isArray(node.material) ? node.material : [node.material]
+        materials.filter(Boolean).forEach((material: any) => material.dispose?.())
+    })
+}
 
 const loadModel = (url: 'login' | 'register') => {
+    if (!GLTFLoader || !scene || disposed) return
     if (currentModel) {
         scene.remove(currentModel)//如果已经有模型，先移除
+        disposeModel(currentModel)
         currentModel = null
     }
     const loader = new GLTFLoader()//创建模型加载器
     type.value = url
-    loader.load(`/models/${url}/scene.gltf`, (gltf: any) => {
+    loader.load(`${import.meta.env.BASE_URL}models/${url}/scene.gltf`, (gltf: any) => {
+        if (disposed) {
+            disposeModel(gltf.scene)
+            return
+        }
         currentModel = gltf.scene//保存当前加载的模型
         scene.add(currentModel)//将加载的模型添加到场景中
         scene.position.y = -0.8//调整模型位置
@@ -66,7 +84,7 @@ const loadModel = (url: 'login' | 'register') => {
                 mixer!.clipAction(clip).play()//播放动画
             })
         }
-    }) 
+    }, undefined, () => undefined)
     emits('changeType', url)//向父组件发送事件，通知类型改变
 }
 
@@ -81,11 +99,13 @@ const initThree = async () => {
 	    GLTFLoader = GLTF_MODULE.GLTFLoader
 	    OrbitControls = CTRL_MODULE.OrbitControls
 	    scene = new THREE.Scene()
+        clock = new THREE.Timer()
+    if (disposed || !canvasRef.value) return
     const width = canvasRef.value?.clientWidth//获取画布宽度
     const height = canvasRef.value?.clientHeight//获取画布高度
     const camera = new THREE.PerspectiveCamera(60, width! / height!, 0.1, 1000)//创建透视相机
     camera.position.set(1, 0.5, 1)//设置相机位置
-    const renderer = new THREE.WebGLRenderer({ //创建渲染器
+    renderer = new THREE.WebGLRenderer({ //创建渲染器
         canvas: canvasRef.value!,//指定渲染器使用的画布
         antialias: true,//启用抗锯齿
         alpha: true,//启用透明背景
@@ -95,9 +115,9 @@ const initThree = async () => {
     loadModel(type.value)//加载模型
     renderer.setSize(width!, height!)//设置渲染器大小
     renderer.render(scene, camera)//渲染场景
-    const controls = new OrbitControls(camera, renderer.domElement)//创建轨道控制器
+    controls = new OrbitControls(camera, renderer.domElement)//创建轨道控制器
     const animate = () => {
-        requestAnimationFrame(animate)//请求下一帧动画
+        animationFrame = requestAnimationFrame(animate)//请求下一帧动画
         if(mixer) {
             mixer.update(clock.getDelta())//更新动画混合器
         }
@@ -108,7 +128,15 @@ const initThree = async () => {
     animate()//开始动画循环 
 }
 onMounted(() => {
-    initThree()
+    void initThree().catch(() => undefined)
+})
+onBeforeUnmount(() => {
+    disposed = true
+    cancelAnimationFrame(animationFrame)
+    controls?.dispose?.()
+    renderer?.dispose?.()
+    disposeModel(currentModel)
+    currentModel = null
 })
 
 </script>

@@ -80,7 +80,7 @@ const gotoPath = (path: string) => {
 }
 //去登录
 const loginHandle = () => {
-  login()
+  void login()
 }
 //退出登录
 const logoutHandle = () => {

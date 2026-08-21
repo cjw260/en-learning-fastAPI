@@ -12,31 +12,38 @@ export class Tracker {
     private initPromise: Promise<void> | null = null
     constructor(config: TrackerConfig) {
         this.config = config
-        this.init()
+        void this.init().catch(() => undefined)
     }
     //protected 运行子类和自身调用
     protected async init() {
         if (this.initPromise) {
             return this.initPromise
         }
-        this.initPromise = (async () => {
+        const operation = (async () => {
             let config = this.config 
-            this.visitorId = await getFingerprint(config)
-            reportEvent(this.visitorId, config)//上报事件
-            reportError(this.visitorId, config)
-            reportPv(this.visitorId, config)
-            reportPerformance(this.visitorId, config)
+            const visitorId = await getFingerprint(config)
+            this.visitorId = visitorId
+            reportEvent(visitorId, config)//上报事件
+            reportError(visitorId, config)
+            reportPv(visitorId, config)
+            reportPerformance(visitorId, config)
         })()
-
-        return this.initPromise
+        this.initPromise = operation
+        try {
+            await operation
+        } catch (error) {
+            if (this.initPromise === operation) this.initPromise = null
+            throw error
+        }
     }
 
-    async setUserId(userId: string) {
+    async setUserId(userId: string, accessToken: string) {
         await this.init()
+        if (!this.visitorId) throw new Error('Tracker visitor is unavailable')
         let url = this.config.baseUrl + this.config.uv.updateApi
         await reportFetch(url, {
             visitorId: this.visitorId,
             userId
-        })
+        }, accessToken)
     }
 }

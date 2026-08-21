@@ -6,16 +6,10 @@ export const useLogin = () => {
     const isShowLogin = inject(IS_SHOW_LOGIN, ref(false))
     const userStore = useUserStore()
     
-    const login = () => {
-        return new Promise((resolve,reject) => {
-            if(userStore.getUser) {
-                resolve(true)
-            } else {
-                isShowLogin.value = true
-                reject(false)
-            }
-        })
-        
+    const login = (): Promise<boolean> => {
+        if(userStore.getUser) return Promise.resolve(true)
+        isShowLogin.value = true
+        return Promise.resolve(false)
     }
     const hide = () => {
         isShowLogin.value = false

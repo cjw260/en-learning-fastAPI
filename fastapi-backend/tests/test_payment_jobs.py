@@ -277,9 +277,10 @@ async def test_payment_facts_signature_idempotency_and_status(
             assert payment is not None
             assert payment.user_id == user.id
             assert payment.course_id == course.id
-            assert payment.amount == Decimal("88.500000000000000000000000000000")
-            assert payment.subject == "Trusted Course"
-            out_trade_no = payment.out_trade_no
+        assert payment.amount == Decimal("88.500000000000000000000000000000")
+        assert payment.subject == "Trusted Course"
+        out_trade_no = payment.out_trade_no
+        assert result["outTradeNo"] == out_trade_no == biz_content["out_trade_no"]
 
         invalid_signature = signed_notification(settings, out_trade_no=out_trade_no)
         invalid_signature["sign"] = "not-a-signature"

@@ -16,12 +16,11 @@ export const reportError = (visitorId: string,config: TrackerConfig) => {
     })
     //捕获promise错误
     window.addEventListener('unhandledrejection', (e: PromiseRejectionEvent) => {
-        console.log(e)
         const isError = e.reason instanceof Error
         const body: ErrorDto = {
             visitorId,//访问者id
             message: isError ? e.reason.message : JSON.stringify(e.reason),//错误信息
-            stack: isError ? e.reason.stack : 'Promise Rejection',//错误堆栈
+            stack: isError ? (e.reason.stack || e.reason.message) : 'Promise Rejection',//错误堆栈
             url: window.location.href,//错误地址
             error: 'promise'//promise错误
         }

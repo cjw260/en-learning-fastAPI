@@ -6,7 +6,6 @@
     "verbatimModuleSyntax": true,//保留内部 ESM语法 不做多余转换
     "declaration": true,//生成声明文件 .d.ts
     "declarationMap": true, //生成声明文件地图 .d.ts.map
-    "baseUrl": ".",//基础路径表示当前文件的根目录
     "paths": {
       "@/*": ["./src/*"]//路径别名
     }

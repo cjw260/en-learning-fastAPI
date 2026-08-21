@@ -60,8 +60,8 @@ const isActive = (path: string) => {
 const gotoPath = async (path: string) => {
     const isAuth = routes.find(item => item.path === path)?.isAuth ?? false
     if(isAuth){
-        await login()
-        if(userStore.getUser){
+        const authenticated = await login()
+        if(authenticated){
             router.push(path)
         }
     }else{

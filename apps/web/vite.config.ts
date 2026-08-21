@@ -54,6 +54,7 @@ export default defineConfig({
     }),
     // Bundle 分析（构建时生成 stats.html）
     visualizer({
+      filename: 'dist/stats.html',
       open: false,
       gzipSize: true,
       brotliSize: true,

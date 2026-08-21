@@ -7,8 +7,9 @@
             </header>
 
             <el-skeleton v-if="isLoading" :rows="10" animated />
+            <el-alert v-else-if="errorMessage" class="mb-6" :title="errorMessage" type="error" show-icon :closable="false" />
 
-            <div v-if="list.length === 0" class="flex justify-center py-20">
+            <div v-if="!isLoading && !errorMessage && list.length === 0" class="flex justify-center py-20">
                 <el-empty description="暂无单词或您尚未购买该课程" />
             </div>
 
@@ -102,6 +103,7 @@ import { VideoPlay, View, Hide } from '@element-plus/icons-vue';
 import { getWordList, saveWordMaster as saveWordMasterApi } from '@/apis/learn';
 import { ElMessage } from 'element-plus';
 import { useUserStore } from '@/stores/user';
+import { apiErrorMessage } from '@/apis/errors';
 interface WordItem {
     word: string;
     input: string;
@@ -113,6 +115,7 @@ const {playAudio} = useAudio({})//发音的api
 const route = useRoute();
 const title = route.params.title || '我的课程';
 const isLoading = ref(false);//默认不加载
+const errorMessage = ref('')
 const list = ref<Word[]>([]);//单词列表
 const currentIndex = ref(0);//当前索引
 const isWordBlurred = ref(true);//是否隐藏单词
@@ -129,7 +132,6 @@ watch(currentWord, () => {
             isTrue:undefined
         }
     })
-    console.log(wordList.value)
 }, { immediate: true })
 
 
@@ -152,14 +154,14 @@ const pageNext = () => {
 const saveWordMaster = async () => {
     //找到单词所有的id并且是一个数组
     const wordIds = list.value.map((item) => item.id);
-    const res = await saveWordMasterApi(wordIds);
-    if(res.success){
+    try {
+        const res = await saveWordMasterApi(wordIds);
         currentIndex.value = 0;
-        getWordListData();
+        void getWordListData();
         userStore.updateUserWordNumber(res.data.wordNumber)
         ElMessage.success(res.message)
-    }else{
-        ElMessage.error(res.message)
+    } catch (error) {
+        ElMessage.error(apiErrorMessage(error, '学习进度保存失败'))
     }
 }
 
@@ -205,12 +207,15 @@ const onKeyDown = (index: number, event: KeyboardEvent) => {
 
 const getWordListData = async () => {
     isLoading.value = true;
-    const res = await getWordList(route.params.courseId as string);
-    isLoading.value = false;
-    if(res.success){
+    errorMessage.value = ''
+    try {
+        const res = await getWordList(route.params.courseId as string);
         list.value = res.data
-    }else{
-        ElMessage.error(res.message)
+    } catch (error) {
+        list.value = []
+        errorMessage.value = apiErrorMessage(error, '课程单词加载失败')
+    } finally {
+        isLoading.value = false;
     }
 }
 onMounted(() => {

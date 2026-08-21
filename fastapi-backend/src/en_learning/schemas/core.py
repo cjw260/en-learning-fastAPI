@@ -233,6 +233,7 @@ class CreatePaymentRequest(StrictModel):
 class CreatePaymentResult(StrictModel):
     pay_url: str = Field(alias="payUrl")
     time_expire: int = Field(alias="timeExpire")
+    out_trade_no: str = Field(alias="outTradeNo")
 
 
 class PaymentStatusResult(StrictModel):

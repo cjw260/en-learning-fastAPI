@@ -175,7 +175,10 @@ async def create_payment(
         )
         raise AppError("支付服务暂时不可用", status_code=503) from exception
     time_expire = int(expires_at.replace(tzinfo=UTC).timestamp() * 1000)
-    return business_success(request, {"payUrl": pay_url, "timeExpire": time_expire})
+    return business_success(
+        request,
+        {"payUrl": pay_url, "timeExpire": time_expire, "outTradeNo": out_trade_no},
+    )
 
 
 async def _notification_parameters(request: Request, max_bytes: int) -> dict[str, str]:

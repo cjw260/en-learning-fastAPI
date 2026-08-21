@@ -8,4 +8,11 @@ export interface CreatePayDto {
 export interface ResultPay {
     payUrl: string; //支付URL
     timeExpire: number; //过期时间
+    outTradeNo?: string; // FastAPI 返回；旧 NestJS 可从 payUrl 兼容解析
+}
+
+export interface PaymentStatus {
+    outTradeNo: string;
+    tradeStatus: string;
+    isPurchased: boolean;
 }

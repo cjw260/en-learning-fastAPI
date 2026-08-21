@@ -38,9 +38,9 @@ const tracker = new Tracker({
 })
 const userStore = useUserStore()
 const { connect, disconnect } = useSocket()
-watch(() => userStore.user?.id, (newVal) => {
-  if (newVal) {
-    tracker.setUserId(newVal)
+watch([() => userStore.user?.id, () => userStore.getAccessToken], ([userId, accessToken]) => {
+  if (userId && accessToken) {
+    void tracker.setUserId(userId, accessToken).catch(() => undefined)
     connect()
   } else { 
     disconnect()

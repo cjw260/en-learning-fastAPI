@@ -4,11 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "pnpm --filter @en/tracker build",
     "dev": "vite",
-    "build": "run-p type-check \"build-only {@}\" --",
+    "build": "pnpm run type-check && pnpm run build-only",
     "preview": "vite preview",
-    "build-only": "vite build",
-    "type-check": "vue-tsc --build"
+    "build-only": "pnpm --filter @en/tracker build && vite build",
+    "type-check": "vue-tsc --build",
+    "test": "node --test --experimental-strip-types tests/*.test.ts"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",
