@@ -8,9 +8,9 @@
 |---|---|
 | 计划版本 | 1.0 |
 | 最后更新 | 2026-08-21 |
-| 当前阶段 | P02：开发数据初始化 |
-| 阶段状态 | `IN_PROGRESS` |
-| 本次唯一允许执行的阶段 | `P02` |
+| 当前阶段 | P02：开发数据初始化（已完成） |
+| 阶段状态 | `COMPLETED` |
+| 本次唯一允许执行的阶段 | `P02`（仅完成记录；禁止启动 P03） |
 | 必需 skill | `en-learning-backend-refactor` |
 | 本次 skill 状态 | `LOADED`（2026-08-21，当前任务） |
 | 下一阶段 | P03：AI 服务迁移（尚未授权启动） |
@@ -125,7 +125,7 @@ fastapi-backend/
 |---|---|---|---|
 | P00 仓库、计划与基线 | `COMPLETED` | 建立新仓库、权威计划、旧系统契约和可回退基线 | 本文件、进度/决策/阶段文档、旧系统基线、新远端 |
 | P01 工程骨架与数据库基础 | `COMPLETED` | 建立可测试、可配置、可迁移的 FastAPI 基础 | Python 工程、双应用、worker 骨架、SQLAlchemy/Alembic、健康检查 |
-| P02 数据初始化 | `IN_PROGRESS` | 在无本地业务数据时确定性重建开发数据 | ECDICT 导入、课程 seed、MinIO 图片、初始化报告 |
+| P02 数据初始化 | `COMPLETED` | 在无本地业务数据时确定性重建开发数据 | ECDICT 导入、课程 seed、MinIO 图片、初始化报告 |
 | P03 AI 服务迁移 | `NOT_STARTED` | 优先迁移 AI API、SSE 和新聊天历史 | `/ai/v1`、LLM 适配、SSE、历史、AI 灰度验证 |
 | P04 核心业务 API | `NOT_STARTED` | 迁移用户、词库、课程、学习与埋点 | `/api/v1` 核心路由、鉴权、上传、业务事务 |
 | P05 支付、实时通信与任务 | `NOT_STARTED` | 迁移高风险异步和外部集成 | 支付回调、Socket.IO、Redis 广播、worker/调度 |
@@ -213,7 +213,7 @@ fastapi-backend/
 
 ### P02：开发数据初始化
 
-状态：`IN_PROGRESS`
+状态：`COMPLETED`
 
 目标：无需生产数据库备份，也能通过受控、幂等、可审计的流程重建词库和课程基础数据。
 

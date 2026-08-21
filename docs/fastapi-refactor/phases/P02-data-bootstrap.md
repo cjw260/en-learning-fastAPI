@@ -1,6 +1,6 @@
 # P02：开发数据初始化
 
-状态：`IN_PROGRESS`
+状态：`COMPLETED`
 
 ## 启动条件
 

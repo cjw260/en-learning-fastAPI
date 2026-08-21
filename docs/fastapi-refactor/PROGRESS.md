@@ -6,10 +6,10 @@
 
 | 字段 | 值 |
 |---|---|
-| Active phase | `P02`：开发数据初始化 |
-| Phase status | `IN_PROGRESS` |
-| Phase lock | `P02 ONLY` |
-| Allowed scope | ECDICT 导入、课程 seed、MinIO 图片、初始化编排/报告及其迁移、测试和文档 |
+| Active phase | `NONE`（P02 已完成，等待用户在新执行中启动 P03） |
+| Phase status | `COMPLETED` |
+| Phase lock | `CLOSED`（不得在本次执行中启动 P03） |
+| Allowed scope | 仅记录 P02 完成状态 |
 | Forbidden scope | P03-P07 的 API/业务迁移、认证、支付、实时通信、生产部署和切流 |
 | Required skill | `en-learning-backend-refactor` |
 | Skill status | `LOADED` |
@@ -22,7 +22,7 @@
 |---|---|---|---|
 | P00 仓库、计划与基线 | `COMPLETED` | `984d60e` | 主提交已推送到新 origin 的阶段分支 |
 | P01 工程骨架与数据库基础 | `COMPLETED` | `bb0a24b` | 主提交已推送到 `origin/codex/p01-fastapi-foundation` |
-| P02 数据初始化 | `IN_PROGRESS` | — | 用户已明确启动；阶段锁已建立 |
+| P02 数据初始化 | `COMPLETED` | `8c5bf25` | 主提交已推送到 `origin/codex/p02-data-bootstrap` |
 | P03 AI 服务 | `NOT_STARTED` | — | — |
 | P04 核心业务 API | `NOT_STARTED` | — | — |
 | P05 支付/Socket.IO/worker | `NOT_STARTED` | — | — |
@@ -134,11 +134,11 @@
 
 ## 当前阻塞
 
-无 P02 阻塞。实现、两次全量 ECDICT 空库验收、最终 diff/安全审查和完整复测均通过；等待安全提交并推送。
+无 P02 阻塞。实现、两次全量 ECDICT 空库验收、最终 diff/安全审查和完整复测均通过；主提交 `8c5bf25` 已安全推送到新 `origin`。
 
 ## 准确下一动作
 
-只暂存 P02 文件并再次检查暂存 diff/敏感信息，创建 P02 主提交并推送 `origin/codex/p02-data-bootstrap`。推送成功后更新完成记录并再次推送；不得启动 P03。
+结束本次执行，不启动 P03。用户在新的执行中明确启动 P03 后，必须重新加载 `en-learning-backend-refactor`，读取根 `AGENTS.md`、本文件和 P03 阶段文件，再建立新的阶段锁。
 
 ## P02 已完成动作
 
@@ -152,6 +152,20 @@
 8. 修复同进程 Alembic `fileConfig` 会禁用既有应用 logger 的副作用。
 9. 使用完整官方 CSV 在隔离空环境连续执行两次：第一次 770,611 插入，第二次 770,611 skip，0 拒绝。
 10. 完成兼容、安全、迁移、事务、异步阻塞、资源释放、幂等、错误/报告、秘密和测试覆盖自审；修正生产拒绝时机、下载字节上限、关闭兜底和对象 metadata/长度复核后完成复测。
+
+## P02 阶段结束记录
+
+```text
+Completed at: 2026-08-21 14:26 CST
+Review result: PASS；兼容、安全、迁移、事务、异步阻塞、资源释放、幂等、错误/报告、秘密和测试覆盖无剩余阻塞问题
+Verification commands: uv lock --check --offline；ruff format --check；ruff check；mypy src；pytest -q（40 passed）；完整 ECDICT 双次 CLI（770,611 insert → 770,611 skip）；git diff --cached --check；敏感/范围扫描
+Commit: 8c5bf25 (P02 主提交)
+Branch: codex/p02-data-bootstrap
+Remote: origin -> https://github.com/cjw260/en-learning-fastAPI.git
+Push result: PASS；P02 主提交已推送，完成记录随当前提交推送
+Remaining non-blocking risks: P02 迁移和 bootstrap 只面向空的 development/test 环境；生产 schema 接管仍须 P07 明确授权与基线/stamp 流程。ECDICT 版本升级必须显式更新 D016、大小、SHA-256 和许可证记录
+Next phase start condition: 用户在新执行中明确启动 P03，并重新加载必需 skill
+```
 
 ## P01 已完成动作
 
